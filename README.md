@@ -33,25 +33,30 @@ Tool sẽ tự động tải về và chạy ngay trên máy tính của bạn!
 
 ---
 
-## 🔧 Triển khai trên VPS
+## 🔧 Triển khai trên VPS Linux (Khuyến nghị)
 
-### Cách 1: Setup tự động (1 lệnh)
+### Setup tự động (1 lệnh duy nhất)
 
-SSH vào VPS Windows, chạy:
+SSH vào VPS Linux, chạy:
 
-```powershell
-irm https://raw.githubusercontent.com/thanhan92-f1/Windows-Genuine-License-Tool/main/setup-vps.ps1 | iex
+```bash
+curl -sSL https://raw.githubusercontent.com/thanhan92-f1/Windows-Genuine-License-Tool/main/vps-deploy/setup.sh | sudo bash
 ```
 
-### Cách 2: Thủ công
+Script sẽ tự động:
+- ✅ Cài đặt Python3 (nếu chưa có)
+- ✅ Download scripts từ GitHub
+- ✅ Mở firewall port 8888
+- ✅ Tạo systemd service (tự khởi động khi reboot)
+- ✅ Khởi động server ngay
 
-```powershell
-# 1. Clone repo
-git clone https://github.com/thanhan92-f1/Windows-Genuine-License-Tool.git
-cd Windows-Genuine-License-Tool
+### Quản lý service
 
-# 2. Chạy server
-powershell -ExecutionPolicy Bypass -File vps-deploy\Start-Server.ps1
+```bash
+systemctl status pho-tue-scripts      # Xem trạng thái
+systemctl restart pho-tue-scripts      # Khởi động lại
+systemctl stop pho-tue-scripts         # Dừng service
+journalctl -u pho-tue-scripts -f       # Xem log realtime
 ```
 
 ---
