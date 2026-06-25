@@ -39,34 +39,44 @@ echo -e "  ${CYAN}╔═══════════════════�
 echo -e "  ${CYAN}║${NC}  ${YELLOW}BUOC 0: CAU HINH HE THONG${NC}"
 echo -e "  ${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "  ${CYAN}Nhan Enter de su dung gia tri mac dinh (dang trong ngoac).${NC}"
+
+# Nhap domain - hoac dung env var, hoac nhap thu cong
+if [ -n "$INPUT_DOMAIN" ]; then
+    DOMAIN="$INPUT_DOMAIN"
+else
+    read -r -p "  Domain [${DOMAIN}]: " input_domain < /dev/tty
+    DOMAIN="${input_domain:-$DOMAIN}"
+fi
+
+if [ -n "$INPUT_PORT" ]; then
+    PORT="$INPUT_PORT"
+else
+    read -r -p "  Port [${PORT}]: " input_port < /dev/tty
+    PORT="${input_port:-$PORT}"
+fi
+
+if [ -n "$INPUT_DIR" ]; then
+    INSTALL_DIR="$INPUT_DIR"
+else
+    read -r -p "  Thu muc [${INSTALL_DIR}]: " input_dir < /dev/tty
+    INSTALL_DIR="${input_dir:-$INSTALL_DIR}"
+fi
+
+echo ""
+echo -e "  ${CYAN}── Cau hinh ────────────────────────────────────────────${NC}"
+echo -e "  Domain:    ${GREEN}$DOMAIN${NC}"
+echo -e "  Port:      ${GREEN}$PORT${NC}"
+echo -e "  Thu muc:   ${GREEN}$INSTALL_DIR${NC}"
+echo -e "  ${CYAN}────────────────────────────────────────────────────────${NC}"
 echo ""
 
-# Nhap domain
-read -p "  Domain [${DOMAIN}]: " input_domain < /dev/tty
-DOMAIN="${input_domain:-$DOMAIN}"
-
-# Nhap port
-read -p "  Port phuc vu [${PORT}]: " input_port < /dev/tty
-PORT="${input_port:-$PORT}"
-
-# Nhap thu muc cai dat
-read -p "  Thu muc cai dat [${INSTALL_DIR}]: " input_dir < /dev/tty
-INSTALL_DIR="${input_dir:-$INSTALL_DIR}"
-
-echo ""
-echo -e "  ${CYAN}── Cau hinh cua ban ──────────────────────────────────────${NC}"
-echo -e "  Domain:      ${GREEN}$DOMAIN${NC}"
-echo -e "  Port:        ${GREEN}$PORT${NC}"
-echo -e "  Thu muc:     ${GREEN}$INSTALL_DIR${NC}"
-echo -e "  ${CYAN}────────────────────────────────────────────────────────────${NC}"
-echo ""
-
-read -p "  Xac nhan cau hinh? [Y/n]: " confirm < /dev/tty
-confirm="${confirm:-y}"
-if [[ ! "$confirm" =~ ^[Yy] ]]; then
-    echo -e "  ${RED}Da huy. Chay lai script de cau hinh lai.${NC}"
-    exit 0
+if [ -z "$INPUT_DOMAIN" ] && [ -z "$INPUT_PORT" ] && [ -z "$INPUT_DIR" ]; then
+    read -r -p "  Xac nhan? [Y/n]: " confirm < /dev/tty
+    confirm="${confirm:-y}"
+    if [[ ! "$confirm" =~ ^[Yy] ]]; then
+        echo -e "  ${RED}Da huy.${NC}"
+        exit 0
+    fi
 fi
 
 # Cap nhat DOMAIN vao server.py sau khi download
@@ -112,6 +122,7 @@ echo -e "        ${GREEN}[OK] Da tai: index.html${NC}"
 echo -e "  ${YELLOW}  Cap nhat domain: $DOMAIN${NC}"
 sed -i "s|irm-genuine-license-windows.hitechcloud.vn|$DOMAIN|g" "$INSTALL_DIR/server.py" 2>/dev/null
 sed -i "s|irm-genuine-license-windows.hitechcloud.vn|$DOMAIN|g" "$INSTALL_DIR/templates/index.html" 2>/dev/null
+sed -i "s|irm-genuine-license-windows.hitechcloud.vn|$DOMAIN|g" "$INSTALL_DIR/scripts/Windows_License_Cleanup.ps1" 2>/dev/null
 sed -i "s|irm-genuine-license-windows.hitechcloud.vn|$DOMAIN|g" "$INSTALL_DIR/scripts/Windows_License_Cleanup.ps1" 2>/dev/null
 echo -e "        ${GREEN}[OK] Da cap nhat domain trong tat ca scripts${NC}"
 
@@ -187,13 +198,13 @@ if command -v nginx &> /dev/null; then
     NGINX_EXISTS="y"
     echo -e "  ${GREEN}[OK] Nginx da co san: $(nginx -v 2>&1)${NC}"
     echo ""
-    read -p "  Ban van muon cau hinh Nginx reverse proxy? [Y/n]: " nginx_choice < /dev/tty
+    read -r -p "  Ban van muon cau hinh Nginx reverse proxy? [Y/n]: " nginx_choice < /dev/tty
     nginx_choice="${nginx_choice:-y}"
     if [[ "$nginx_choice" =~ ^[Yy] ]]; then
         INSTALL_NGINX="y"
     fi
 else
-    read -p "  Ban co muon cai dat Nginx + SSL? [Y/n]: " nginx_choice < /dev/tty
+    read -r -p "  Ban co muon cai dat Nginx + SSL? [Y/n]: " nginx_choice < /dev/tty
     nginx_choice="${nginx_choice:-y}"
     if [[ "$nginx_choice" =~ ^[Yy] ]]; then
         INSTALL_NGINX="y"
@@ -280,7 +291,7 @@ EOF
     echo ""
 
     INSTALL_SSL="n"
-    read -p "  Ban co muon cai dat SSL (Let's Encrypt)? [Y/n]: " ssl_choice < /dev/tty
+    read -r -p "  Ban co muon cai dat SSL (Let's Encrypt)? [Y/n]: " ssl_choice < /dev/tty
     ssl_choice="${ssl_choice:-y}"
     if [[ "$ssl_choice" =~ ^[Yy] ]]; then
         INSTALL_SSL="y"
