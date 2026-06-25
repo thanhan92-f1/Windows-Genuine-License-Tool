@@ -32,6 +32,17 @@ class ScriptHandler(BaseHTTPRequestHandler):
     def _is_browser(self):
         """Kiem tra request tu browser hay PowerShell (irm)"""
         ua = self.headers.get("User-Agent", "").lower()
+
+        # PowerShell / irm / curl / wget -> KHONG phai browser
+        non_browser = ["powershell", "invoke-restmethod", "curl", "wget", "python", "node", "go-http"]
+        if any(kw in ua for kw in non_browser):
+            return False
+
+        # Khong co User-Agent -> co the la script
+        if not ua:
+            return False
+
+        # Browser keywords
         browser_keywords = ["mozilla", "chrome", "safari", "firefox", "edge", "opera", "webkit"]
         return any(kw in ua for kw in browser_keywords)
 
