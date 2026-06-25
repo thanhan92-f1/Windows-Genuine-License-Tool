@@ -2,7 +2,7 @@
 # ============================================================
 #  VPS SETUP SCRIPT - Pho Tue SoftWare Solutions JSC
 #  Chay 1 lenh duy nhat tren VPS Linux:
-#  curl -sSL https://raw.githubusercontent.com/thanhan92-f1/Windows-Genuine-License-Tool/main/vps-deploy/setup.sh | sudo bash
+#  curl -sSL https://raw.githubusercontent.com/thanhan92-f1/Windows-Genuine-License-Tool/main/vps-deploy/bootstrap.sh | sudo bash
 # ============================================================
 
 set -e

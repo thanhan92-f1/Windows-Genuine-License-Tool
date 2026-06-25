@@ -40,7 +40,7 @@ Tool sẽ tự động tải về và chạy ngay trên máy tính của bạn!
 SSH vào VPS Linux, chạy:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/thanhan92-f1/Windows-Genuine-License-Tool/main/vps-deploy/setup.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/thanhan92-f1/Windows-Genuine-License-Tool/main/vps-deploy/bootstrap.sh | sudo bash
 ```
 
 Script sẽ tự động:
