@@ -46,7 +46,8 @@ Write-Host "  Thu muc scripts: $ScriptDir" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Client su dung lenh:" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "  irm http://${publicIP}:${Port}/Windows_License_Cleanup.ps1 | iex" -ForegroundColor White
+Write-Host "  irm https://irm-genuine-license-windows.hitechcloud.vn | iex" -ForegroundColor White
+Write-Host "  (hoac: irm http://${publicIP}:${Port} | iex)" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "  Nhan Ctrl+C de tat server" -ForegroundColor DarkGray
 Write-Host "  $('=' * 60)" -ForegroundColor Cyan
@@ -61,31 +62,25 @@ while ($listener.IsListening) {
         $requestedFile = $request.Url.LocalPath.TrimStart('/')
         Write-Host "  [$(Get-Date -Format 'HH:mm:ss')] Request: $requestedFile" -ForegroundColor DarkGray
 
+        # Tim file script chinh (uu tien Windows_License_Cleanup.ps1)
+        $mainScript = Get-ChildItem -Path $ScriptDir -Filter "*.ps1" -ErrorAction SilentlyContinue | Select-Object -First 1
+
         if ($requestedFile -eq "" -or $requestedFile -eq "index") {
-            # Hien thi danh sach files
-            $html = @"
-<!DOCTYPE html>
-<html>
-<head><title>Pho Tue Script Server</title></head>
-<body style="font-family:monospace;background:#1a1a2e;color:#eee;padding:40px">
-<h1 style="color:#0f0">Pho Tue Script Server</h1>
-<h2>Available Scripts:</h2>
-<ul>
-"@
-            Get-ChildItem -Path $ScriptDir -Filter "*.ps1" -ErrorAction SilentlyContinue | ForEach-Object {
-                $html += "<li><a href='/$($_.Name)' style='color:#0ff'>$($_.Name)</a></li>"
+            # Phuc vu script chinh truc tiep tai root
+            if ($mainScript) {
+                $content = Get-Content -Path $mainScript.FullName -Raw -Encoding UTF8
+                $buffer = [System.Text.Encoding]::UTF8.GetBytes($content)
+                $response.ContentType = "text/plain; charset=utf-8"
+                $response.ContentLength64 = $buffer.Length
+                $response.OutputStream.Write($buffer, 0, $buffer.Length)
+                Write-Host "  [$(Get-Date -Format 'HH:mm:ss')] -> Phuc vu: $($mainScript.Name) ($($buffer.Length) bytes)" -ForegroundColor Green
+            } else {
+                $msg = "# Khong tim thay script nao trong thu muc scripts"
+                $buffer = [System.Text.Encoding]::UTF8.GetBytes($msg)
+                $response.StatusCode = 404
+                $response.ContentLength64 = $buffer.Length
+                $response.OutputStream.Write($buffer, 0, $buffer.Length)
             }
-            $html += @"
-</ul>
-<hr>
-<p>Usage: <code>irm http://${publicIP}:${Port}/SCRIPT_NAME.ps1 | iex</code></p>
-</body>
-</html>
-"@
-            $buffer = [System.Text.Encoding]::UTF8.GetBytes($html)
-            $response.ContentType = "text/html; charset=utf-8"
-            $response.ContentLength64 = $buffer.Length
-            $response.OutputStream.Write($buffer, 0, $buffer.Length)
         }
         else {
             $filePath = Join-Path $ScriptDir $requestedFile
