@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windows License Cleanup Tool - Pho Tue Software Solutions JSC</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text: #e6edf3;
+            --text-muted: #8b949e;
+            --accent: #58a6ff;
+            --green: #3fb950;
+            --yellow: #d29922;
+            --red: #f85149;
+            --orange: #d18616;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 0;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, var(--green), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header p { color: var(--text-muted); font-size: 1.1em; }
+        .header .badge {
+            display: inline-block;
+            background: var(--green);
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        .quick-start {
+            background: var(--surface);
+            border: 1px solid var(--green);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 30px;
+        }
+        .quick-start h2 { color: var(--green); margin-bottom: 12px; }
+        .cmd-box {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 16px;
+            font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+            font-size: 1em;
+            color: var(--green);
+            position: relative;
+            overflow-x: auto;
+            cursor: pointer;
+        }
+        .cmd-box:hover { border-color: var(--accent); }
+        .cmd-box .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--border);
+            border: none;
+            color: var(--text);
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+        .cmd-box .copy-btn:hover { background: var(--accent); color: #000; }
+        .note {
+            background: rgba(210, 153, 34, 0.1);
+            border-left: 4px solid var(--yellow);
+            padding: 12px 16px;
+            border-radius: 0 6px 6px 0;
+            margin: 16px 0;
+            font-size: 0.95em;
+        }
+        .note strong { color: var(--yellow); }
+        .danger {
+            background: rgba(248, 81, 73, 0.1);
+            border-left: 4px solid var(--red);
+            padding: 12px 16px;
+            border-radius: 0 6px 6px 0;
+            margin: 16px 0;
+            font-size: 0.95em;
+        }
+        .danger strong { color: var(--red); }
+        .info {
+            background: rgba(88, 166, 255, 0.1);
+            border-left: 4px solid var(--accent);
+            padding: 12px 16px;
+            border-radius: 0 6px 6px 0;
+            margin: 16px 0;
+            font-size: 0.95em;
+        }
+        .info strong { color: var(--accent); }
+        h2 {
+            color: var(--accent);
+            margin: 30px 0 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        h3 { color: var(--text); margin: 20px 0 10px; }
+        .steps {
+            counter-reset: step;
+            list-style: none;
+            padding: 0;
+        }
+        .steps li {
+            counter-increment: step;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+            position: relative;
+        }
+        .steps li::before {
+            content: counter(step);
+            position: absolute;
+            top: -12px;
+            left: 16px;
+            background: var(--accent);
+            color: #000;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .steps li h3 { margin-top: 0; }
+        code {
+            background: rgba(110, 118, 129, 0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9em;
+        }
+        .cmd-block {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin: 10px 0;
+            font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9em;
+            color: var(--text);
+            overflow-x: auto;
+            white-space: pre;
+        }
+        .path { color: var(--orange); }
+        .string { color: var(--green); }
+        .comment { color: var(--text-muted); }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+        }
+        th, td {
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: var(--surface);
+            color: var(--accent);
+            font-weight: 600;
+        }
+        tr:hover td { background: rgba(88, 166, 255, 0.05); }
+        .footer {
+            text-align: center;
+            padding: 30px 20px;
+            border-top: 1px solid var(--border);
+            margin-top: 40px;
+            color: var(--text-muted);
+            font-size: 0.9em;
+        }
+        .footer a { color: var(--accent); text-decoration: none; }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 0;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            color: var(--text-muted);
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .tab:hover { color: var(--text); }
+        .tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+        .tab-content { display: none; padding: 20px 0; }
+        .tab-content.active { display: block; }
+        .checklist { list-style: none; padding: 0; }
+        .checklist li { padding: 6px 0; }
+        .checklist li::before { content: "✅ "; }
+        @media (max-width: 600px) {
+            .header h1 { font-size: 1.4em; }
+            .container { padding: 15px; }
+            .steps li { padding: 15px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🛡️ Windows License Cleanup Tool</h1>
+    <p>Công cụ chuẩn hóa bản quyền Windows - Gỡ bỏ license lậu &amp; khôi phục hệ thống</p>
+    <p style="margin-top:8px;color:#8b949e">Pho Tue SoftWare Solutions JSC</p>
+    <span class="badge">v1.0 - 2026-06-25</span>
+</div>
+
+<div class="container">
+
+    <!-- QUICK START -->
+    <div class="quick-start">
+        <h2>🚀 Sử dụng ngay (1 lệnh duy nhất)</h2>
+        <p style="margin-bottom:12px">Mở <strong>PowerShell với quyền Administrator</strong> trên máy Windows và chạy:</p>
+        <div class="cmd-box" onclick="copyCmd(this)">
+            irm https://irm-genuine-license-windows.hitechcloud.vn | iex
+            <button class="copy-btn">📋 Copy</button>
+        </div>
+        <div class="note">
+            <strong>⚠️ Lưu ý:</strong> Tool chỉ <strong>gỡ bỏ</strong> công cụ crack. Không cung cấp giấy phép phần mềm.
+            Sau khi gỡ xong, cần nhập <strong>key bản quyền chính hãng</strong> để kích hoạt Windows.
+        </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('auto')">⚡ Tự động</div>
+        <div class="tab" onclick="switchTab('manual')">🔧 Thủ công</div>
+        <div class="tab" onclick="switchTab('check')">🔍 Kiểm tra</div>
+    </div>
+
+    <!-- TAB: TU DONG -->
+    <div id="tab-auto" class="tab-content active">
+        <h2>⚡ Cách 1: Sử dụng Tool tự động</h2>
+        <p>Tool sẽ tự động quét và gỡ bỏ tất cả công cụ crack trong một lần chạy.</p>
+
+        <div class="cmd-block"><span class="comment"># Mở PowerShell với quyền Administrator (Windows + X → Terminal Admin)</span>
+<span class="comment"># Chạy lệnh sau:</span>
+
+<span class="string">irm https://irm-genuine-license-windows.hitechcloud.vn | iex</span></div>
+
+        <h3>Tool sẽ thực hiện:</h3>
+        <ul class="checklist">
+            <li>Gỡ Product Key hiện tại (<code>slmgr /upk</code>)</li>
+            <li>Xóa key khỏi Registry (<code>slmgr /cpky</code>)</li>
+            <li>Xóa thông tin KMS server (<code>slmgr /ckms</code>)</li>
+            <li>Reset trạng thái License (<code>slmgr /rearm</code>)</li>
+            <li>Xóa thư mục/file KMS (KMSpico, KMSAuto, KMS-R@1n...)</li>
+            <li>Xóa Scheduled Tasks liên quan KMS</li>
+            <li>Sửa file Hosts (xóa dòng block Microsoft)</li>
+            <li>Khôi phục dịch vụ Windows Update & Software Protection</li>
+            <li>Dọn dẹp Registry keys liên quan KMS</li>
+        </ul>
+
+        <div class="danger">
+            <strong>⚠️ Quan trọng:</strong> Nếu đang dùng hệ thống <strong>Bootrom</strong>, hãy <strong>Mở Super OS</strong> trước khi chạy tool.
+            Sau khi hoàn tất, <strong>Đóng Super OS</strong> để đồng bộ toàn hệ thống.
+        </div>
+    </div>
+
+    <!-- TAB: THU CONG -->
+    <div id="tab-manual" class="tab-content">
+        <h2>🔧 Cách 2: Gỡ thủ công (5 bước)</h2>
+        <p>Dành cho kỹ thuật viên muốn kiểm soát từng bước.</p>
+
+        <ol class="steps">
+            <li>
+                <h3>Mở CMD với quyền Administrator</h3>
+                <p>Nhấn <code>Windows + S</code>, gõ <code>cmd</code>, click chuột phải chọn <strong>Run as administrator</strong>.</p>
+                <div class="cmd-block"><span class="comment"># Hoặc nhấn Windows + X, chọn "Terminal (Admin)"</span></div>
+            </li>
+
+            <li>
+                <h3>Gỡ Product Key hiện tại</h3>
+                <p>Lệnh này gỡ bỏ hoàn toàn key lậu ra khỏi hệ điều hành:</p>
+                <div class="cmd-block">slmgr.vbs /upk</div>
+                <div class="note"><strong>📋 Kết quả:</strong> Thông báo "Uninstalled product key successfully"</div>
+            </li>
+
+            <li>
+                <h3>Xóa key khỏi Registry</h3>
+                <p>Xóa dấu vết key rác trong Registry:</p>
+                <div class="cmd-block">slmgr.vbs /cpky</div>
+            </li>
+
+            <li>
+                <h3>Xóa thông tin KMS & Reset License</h3>
+                <p>Xóa tên máy chủ KMS ảo và reset trạng thái cấp phép:</p>
+                <div class="cmd-block">slmgr.vbs /ckms
+slmgr.vbs /rearm</div>
+            </li>
+
+            <li>
+                <h3>Sửa file Hosts</h3>
+                <p>Tools crack thường sửa file hosts để chặn kết nối Microsoft. Cần khôi phục lại:</p>
+                <div class="cmd-block"><span class="comment"># Mở file hosts bằng Notepad (quyền Admin):</span>
+notepad <span class="path">C:\Windows\System32\drivers\etc\hosts</span>
+
+<span class="comment"># Xóa tất cả dòng chứa:</span>
+<span class="comment">#   activation.microsoft.com</span>
+<span class="comment">#   validation.sls.microsoft.com</span>
+<span class="comment">#   kms / crack / kmspico</span>
+<span class="comment"># Lưu lại bằng Ctrl + S</span></div>
+            </li>
+
+            <li>
+                <h3>Xóa thư mục/file KMS (nếu có)</h3>
+                <p>Mở File Explorer, bật hiện file ẩn (Hidden items), kiểm tra và xóa:</p>
+                <div class="cmd-block"><span class="path">C:\Program Files\KMSpico</span>
+<span class="path">C:\Program Files (x86)\KMSpico</span>
+<span class="path">C:\ProgramData\KMSAutoS</span>
+<span class="path">C:\ProgramData\KMSAuto</span>
+<span class="path">C:\Windows\KMS-R@1n</span></div>
+            </li>
+
+            <li>
+                <h3>Xóa Scheduled Tasks</h3>
+                <p>Mở <strong>Task Scheduler</strong> (gõ "Task Scheduler" vào Start), tìm và xóa:</p>
+                <table>
+                    <tr><th>Task Name</th><th>Mô tả</th></tr>
+                    <tr><td><code>AutoKMS</code></td><td>Tự động kích hoạt KMS</td></tr>
+                    <tr><td><code>KMSAuto</code></td><td>Tool KMS Auto</td></tr>
+                    <tr><td><code>SvcRestartTask</code></td><td>Khởi động lại dịch vụ KMS</td></tr>
+                    <tr><td><code>KMSpico</code></td><td>Tool KMSpico</td></tr>
+                </table>
+            </li>
+
+            <li>
+                <h3>Khởi động lại & Nhập key bản quyền</h3>
+                <p>Sau khi hoàn tất, khởi động lại máy. Vào <strong>Settings → Activation → Change product key</strong> để nhập key chính hãng.</p>
+                <div class="cmd-block"><span class="comment"># Hoặc dùng CMD:</span>
+slmgr.vbs /ipk <span class="string">XXXXX-XXXXX-XXXXX-XXXXX-XXXXX</span>
+slmgr.vbs /ato</div>
+            </li>
+        </ol>
+    </div>
+
+    <!-- TAB: KIEM TRA -->
+    <div id="tab-check" class="tab-content">
+        <h2>🔍 Cách kiểm tra trạng thái License</h2>
+
+        <h3>Kiểm tra bằng CMD</h3>
+        <p>Mở CMD quyền Admin và chạy:</p>
+        <div class="cmd-block">slmgr.vbs /dlv</div>
+        <div class="info">
+            <strong>📋 Kết quả mong muốn:</strong><br>
+            ✅ <strong>Sạch:</strong> "Licensed" hoặc "Notification"<br>
+            ❌ <strong>Có crack:</strong> "KMS Client" hoặc "Volume activation expiration: 180 days"
+        </div>
+
+        <h3>Kiểm tra nhanh bằng PowerShell</h3>
+        <div class="cmd-block"><span class="comment"># Kiểm tra trạng thái kích hoạt:</span>
+(Get-WmiObject -query "select * from SoftwareLicensingProduct where PartialProductKey is not null").LicenseStatus
+
+<span class="comment"># 0 = Unlicensed, 1 = Licensed, 2 = OOB Grace, 3 = OOT Grace, 4 = Non-genuine</span>
+
+<span class="comment"># Kiểm tra có phải KMS client không:</span>
+slmgr.vbs /dli | Select-String "KMS"</div>
+
+        <h3>Kiểm tra Scheduled Tasks đáng ngờ</h3>
+        <div class="cmd-block"><span class="comment"># Liệt kê tất cả tasks liên quan KMS:</span>
+schtasks /query /fo LIST | findstr /i "kms auto crack"</div>
+
+        <h3>Kiểm tra file hosts</h3>
+        <div class="cmd-block"><span class="comment"># Xem nội dung file hosts:</span>
+type <span class="path">C:\Windows\System32\drivers\etc\hosts</span>
+
+<span class="comment"># Nếu có dòng chứa "kms", "crack", "activation.microsoft.com"</span>
+<span class="comment"># → Hệ thống đang bị can thiệp</span></div>
+
+        <h3>Kiểm tra thư mục KMS</h3>
+        <div class="cmd-block"><span class="comment"># Kiểm tra các thư mục KMS có tồn tại không:</span>
+dir "<span class="path">C:\Program Files\KMSpico</span>" 2>nul
+dir "<span class="path">C:\ProgramData\KMSAutoS</span>" 2>nul
+dir "<span class="path">C:\Windows\KMS-R@1n</span>" 2>nul
+
+<span class="comment"># Nếu thấy thư mục → Cần xóa ngay</span></div>
+
+        <h3>Bảng tra cứu kết quả</h3>
+        <table>
+            <tr><th>Trạng thái</th><th>Ý nghĩa</th><th>Hành động</th></tr>
+            <tr><td><code>Licensed</code></td><td>Windows đã kích hoạt hợp lệ</td><td>✅ Không cần làm gì</td></tr>
+            <tr><td><code>Notification</code></td><td>Chưa kích hoạt / Hết hạn</td><td>⚠️ Nhập key bản quyền</td></tr>
+            <tr><td><code>KMS Client</code></td><td>Đang dùng KMS lậu</td><td>❌ Chạy tool gỡ ngay</td></tr>
+            <tr><td><code>Volume activation</code></td><td>Volume license không hợp lệ</td><td>❌ Chạy tool gỡ ngay</td></tr>
+        </table>
+    </div>
+
+    <!-- COMMON TOOLS -->
+    <h2>📋 Các lệnh slmgr thường dùng</h2>
+    <table>
+        <tr><th>Lệnh</th><th>Mô tả</th></tr>
+        <tr><td><code>slmgr.vbs /upk</code></td><td>Gỡ Product Key hiện tại</td></tr>
+        <tr><td><code>slmgr.vbs /cpky</code></td><td>Xóa key khỏi Registry</td></tr>
+        <tr><td><code>slmgr.vbs /ckms</code></td><td>Xóa thông tin KMS server</td></tr>
+        <tr><td><code>slmgr.vbs /rearm</code></td><td>Reset trạng thái License</td></tr>
+        <tr><td><code>slmgr.vbs /ipk KEY</code></td><td>Nhập Product Key mới</td></tr>
+        <tr><td><code>slmgr.vbs /ato</code></td><td>Kích hoạt Windows online</td></tr>
+        <tr><td><code>slmgr.vbs /dlv</code></td><td>Xem thông tin License chi tiết</td></tr>
+        <tr><td><code>slmgr.vbs /xpr</code></td><td>Xem thời hạn kích hoạt</td></tr>
+    </table>
+
+    <!-- FAQ -->
+    <h2>❓ Câu hỏi thường gặp</h2>
+
+    <h3>Tool có xóa game / dữ liệu không?</h3>
+    <div class="info"><strong>Không.</strong> Tool chỉ gỡ bỏ các công cụ crack (KMS, registry, scheduled tasks).
+    Toàn bộ dữ liệu cá nhân, game, phần mềm khác vẫn được giữ nguyên.</div>
+
+    <h3>Sau khi gỡ có cần cài lại Windows không?</h3>
+    <div class="info"><strong>Không cần.</strong> Chỉ cần nhập key bản quyền mới và kích hoạt lại là được.
+    Windows sẽ hoạt động bình thường.</div>
+
+    <h3>Tool có an toàn không?</h3>
+    <div class="info"><strong>Hoàn toàn an toàn.</strong> Tool chỉ thực hiện các lệnh chuẩn của Windows (slmgr.vbs)
+    và xóa các file/thư mục liên quan đến phần mềm crack.
+    Mã nguồn mở, có thể kiểm tra tại <a href="https://github.com/thanhan92-f1/Windows-Genuine-License-Tool" style="color:var(--accent)">GitHub</a>.</div>
+
+    <h3>Phòng net Bootrom thì làm sao?</h3>
+    <div class="info"><strong>Bước 1:</strong> Mở Super OS (băng image) trên 1 máy trạm đại diện.<br>
+    <strong>Bước 2:</strong> Chạy tool trên máy trạm đó.<br>
+    <strong>Bước 3:</strong> Đóng Super OS (lưu image).<br>
+    Tất cả máy trạm sẽ được đồng bộ.</div>
+
+</div>
+
+<div class="footer">
+    <p><strong>Pho Tue SoftWare Solutions JSC</strong></p>
+    <p>🌐 <a href="https://photuesoftware.com">photuesoftware.com</a> | 📧 info@photuesoftware.com | ☎️ 0865.920.041</p>
+    <p style="margin-top:10px">📍 Căn hộ OT03, Tòa nhà The Landmark 81, 720A Đ. Điện Biên Phủ, TP.HCM</p>
+    <p style="margin-top:10px">
+        <a href="https://github.com/thanhan92-f1/Windows-Genuine-License-Tool">📦 GitHub</a>
+    </p>
+</div>
+
+<script>
+function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+}
+
+function copyCmd(el) {
+    const text = el.textContent.replace('📋 Copy', '').trim();
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = el.querySelector('.copy-btn');
+        btn.textContent = '✅ Copied!';
+        setTimeout(() => btn.textContent = '📋 Copy', 2000);
+    });
+}
+</script>
+
+</body>
+</html>

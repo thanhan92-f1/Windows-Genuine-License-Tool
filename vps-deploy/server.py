@@ -16,6 +16,7 @@ from datetime import datetime
 # ============================================================
 PORT = int(os.environ.get("PORT", 8888))
 SCRIPT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scripts")
+TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
 DEFAULT_SCRIPT = "Windows_License_Cleanup.ps1"
 DOMAIN = "irm-genuine-license-windows.hitechcloud.vn"
 
@@ -28,25 +29,64 @@ class ScriptHandler(BaseHTTPRequestHandler):
         sys.stdout.write(f"  [{timestamp}] {self.address_string()} - {format % args}\n")
         sys.stdout.flush()
 
+    def _is_browser(self):
+        """Kiem tra request tu browser hay PowerShell (irm)"""
+        ua = self.headers.get("User-Agent", "").lower()
+        browser_keywords = ["mozilla", "chrome", "safari", "firefox", "edge", "opera", "webkit"]
+        return any(kw in ua for kw in browser_keywords)
+
     def do_GET(self):
         path = self.path.lstrip("/").split("?")[0]
 
-        # Root URL -> serve script chinh
+        # Root URL -> phan biet browser vs PowerShell
         if path == "" or path == "index":
-            script_path = os.path.join(SCRIPT_DIR, DEFAULT_SCRIPT)
-            if os.path.exists(script_path):
-                self._serve_file(script_path, DEFAULT_SCRIPT)
+            if self._is_browser():
+                # Browser -> hien trang docs index.html
+                index_path = os.path.join(TEMPLATE_DIR, "index.html")
+                if os.path.exists(index_path):
+                    self._serve_html(index_path)
+                else:
+                    self._serve_error(404, "index.html not found")
             else:
-                self._serve_error(404, f"# Khong tim thay {DEFAULT_SCRIPT}")
+                # PowerShell (irm) -> serve script .ps1
+                script_path = os.path.join(SCRIPT_DIR, DEFAULT_SCRIPT)
+                if os.path.exists(script_path):
+                    self._serve_file(script_path, DEFAULT_SCRIPT)
+                else:
+                    self._serve_error(404, f"# Khong tim thay {DEFAULT_SCRIPT}")
             return
 
-        # Tim file trong thu muc scripts
-        file_path = os.path.join(SCRIPT_DIR, os.path.basename(path))
+        # index.html explicit
+        if path == "index.html":
+            index_path = os.path.join(TEMPLATE_DIR, "index.html")
+            if os.path.exists(index_path):
+                self._serve_html(index_path)
+            else:
+                self._serve_error(404, "index.html not found")
+            return
 
+        # .ps1 files -> serve tu scripts dir
+        file_path = os.path.join(SCRIPT_DIR, os.path.basename(path))
         if os.path.isfile(file_path):
             self._serve_file(file_path, os.path.basename(path))
         else:
             self._serve_error(404, f"# 404 Not Found: {path}")
+
+    def _serve_html(self, filepath):
+        """Serve file HTML cho browser"""
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                content = f.read()
+            encoded = content.encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(encoded)))
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(encoded)
+            print(f"  -> Browser: index.html ({len(encoded)/1024:.1f} KB)")
+        except Exception as e:
+            self._serve_error(500, f"Server Error: {e}")
 
     def _serve_file(self, filepath, filename):
         try:
