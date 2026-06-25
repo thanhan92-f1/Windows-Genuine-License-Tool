@@ -43,15 +43,15 @@ echo -e "  ${CYAN}Nhan Enter de su dung gia tri mac dinh (dang trong ngoac).${NC
 echo ""
 
 # Nhap domain
-read -p "  Domain [${DOMAIN}]: " input_domain
+read -p "  Domain [${DOMAIN}]: " input_domain < /dev/tty
 DOMAIN="${input_domain:-$DOMAIN}"
 
 # Nhap port
-read -p "  Port phuc vu [${PORT}]: " input_port
+read -p "  Port phuc vu [${PORT}]: " input_port < /dev/tty
 PORT="${input_port:-$PORT}"
 
 # Nhap thu muc cai dat
-read -p "  Thu muc cai dat [${INSTALL_DIR}]: " input_dir
+read -p "  Thu muc cai dat [${INSTALL_DIR}]: " input_dir < /dev/tty
 INSTALL_DIR="${input_dir:-$INSTALL_DIR}"
 
 echo ""
@@ -62,7 +62,7 @@ echo -e "  Thu muc:     ${GREEN}$INSTALL_DIR${NC}"
 echo -e "  ${CYAN}────────────────────────────────────────────────────────────${NC}"
 echo ""
 
-read -p "  Xac nhan cau hinh? [Y/n]: " confirm
+read -p "  Xac nhan cau hinh? [Y/n]: " confirm < /dev/tty
 confirm="${confirm:-y}"
 if [[ ! "$confirm" =~ ^[Yy] ]]; then
     echo -e "  ${RED}Da huy. Chay lai script de cau hinh lai.${NC}"
@@ -187,13 +187,13 @@ if command -v nginx &> /dev/null; then
     NGINX_EXISTS="y"
     echo -e "  ${GREEN}[OK] Nginx da co san: $(nginx -v 2>&1)${NC}"
     echo ""
-    read -p "  Ban van muon cau hinh Nginx reverse proxy? [Y/n]: " nginx_choice
+    read -p "  Ban van muon cau hinh Nginx reverse proxy? [Y/n]: " nginx_choice < /dev/tty
     nginx_choice="${nginx_choice:-y}"
     if [[ "$nginx_choice" =~ ^[Yy] ]]; then
         INSTALL_NGINX="y"
     fi
 else
-    read -p "  Ban co muon cai dat Nginx + SSL? [Y/n]: " nginx_choice
+    read -p "  Ban co muon cai dat Nginx + SSL? [Y/n]: " nginx_choice < /dev/tty
     nginx_choice="${nginx_choice:-y}"
     if [[ "$nginx_choice" =~ ^[Yy] ]]; then
         INSTALL_NGINX="y"
@@ -280,7 +280,7 @@ EOF
     echo ""
 
     INSTALL_SSL="n"
-    read -p "  Ban co muon cai dat SSL (Let's Encrypt)? [Y/n]: " ssl_choice
+    read -p "  Ban co muon cai dat SSL (Let's Encrypt)? [Y/n]: " ssl_choice < /dev/tty
     ssl_choice="${ssl_choice:-y}"
     if [[ "$ssl_choice" =~ ^[Yy] ]]; then
         INSTALL_SSL="y"
