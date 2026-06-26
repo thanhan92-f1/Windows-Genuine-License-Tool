@@ -30,6 +30,11 @@ Tool sẽ tự động tải về và chạy ngay trên máy tính của bạn!
 | 6 | Xóa Scheduled Tasks | Xóa AutoKMS, SvcRestartTask... |
 | 7 | Sửa file Hosts | Xóa dòng block Microsoft |
 | 8 | Kiểm tra License | `slmgr /dlv` + `/xpr` |
+| 9 | Nhập & kích hoạt key mới | Nhập key Pro và kích hoạt online |
+| A | **Kiểm tra phiên bản** | Xem edition hiện tại, OEM key, target editions |
+| B | **Sửa lỗi hệ thống** | DISM RestoreHealth + SFC + xóa cache Windows Update |
+| C | **Nâng cấp Home → Pro** | 3 cách: generic key, key trực tiếp, DISM |
+| D | **Nâng cấp toàn diện** | Cleanup + sửa lỗi + upgrade + activate (1 lần) |
 
 ---
 
