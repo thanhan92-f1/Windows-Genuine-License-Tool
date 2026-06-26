@@ -7021,6 +7021,9 @@ function Show-Menu {
             [string]$K3="",[string]$T3="",[string]$C3="White"
         )
         $colW = 30
+        if ([string]::IsNullOrWhiteSpace($C1)) { $C1 = "White" }
+        if ([string]::IsNullOrWhiteSpace($C2)) { $C2 = "White" }
+        if ([string]::IsNullOrWhiteSpace($C3)) { $C3 = "White" }
         Write-Host "  " -NoNewline
         # Col 1
         if ($K1) { Write-Host "$($K1.PadRight(5))" -Fore Cyan -NoNewline; Write-Host $T1.PadRight($colW - 5) -Fore $C1 -NoNewline }
@@ -7062,6 +7065,9 @@ function Show-Menu {
             [string]$K3="",[string]$T3="",[string]$C3="White"
         )
         $colW = 30
+        if ([string]::IsNullOrWhiteSpace($C1)) { $C1 = "White" }
+        if ([string]::IsNullOrWhiteSpace($C2)) { $C2 = "White" }
+        if ([string]::IsNullOrWhiteSpace($C3)) { $C3 = "White" }
         Write-Host "  " -NoNewline
         # Col 1
         $inner1 = if($K1){" $K1 $T1"}else{""}
