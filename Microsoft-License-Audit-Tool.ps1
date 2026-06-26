@@ -5397,7 +5397,7 @@ function Invoke-ServicesHealth {
         if ($svc) {
             $sc = if ($svc.Status -eq "Running") { "Green" } elseif ($svc.StartType -eq "Disabled") { "DarkGray" } else { "Yellow" }
             Write-Host "  $($svc.DisplayName): $($svc.Status) [$($svc.StartType)]" -Fore $sc
-        } else { Write-Host "  $s: Not Found" -Fore Red }
+        } else { Write-Host "  ${s}: Not Found" -Fore Red }
     }
     Write-Host ""
 }
@@ -5418,7 +5418,7 @@ function Invoke-DependencyChecker {
             $svc = Get-Service $s -EA SilentlyContinue
             if ($svc -and $svc.Status -eq "Running") { Write-Host "    [OK] $($svc.DisplayName)" -Fore Green }
             elseif ($svc) { Write-Host "    [!!] $($svc.DisplayName): $($svc.Status)" -Fore Red; $allOK = $false }
-            else { Write-Host "    [--] $s: Not found" -Fore DarkGray }
+            else { Write-Host "    [--] ${s}: Not found" -Fore DarkGray }
         }
         if (-not $allOK) { Write-Host "    >> Co the anh huong den $($dep.Name)" -Fore Yellow }
         Write-Host ""
