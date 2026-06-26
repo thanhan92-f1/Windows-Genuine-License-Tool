@@ -2402,6 +2402,891 @@ function Export-QuickReport {
 }
 
 # ============================================================
+#  CHUC NANG THEO TUNG SAN PHAM
+# ============================================================
+
+# ──────────────────────────────────────────────────────────
+#  WINDOWS: Kiem tra + Go KMS + Khoi phuc
+# ──────────────────────────────────────────────────────────
+function Repair-WindowsLicense {
+    Write-Header "WINDOWS: KIEM TRA + GO KMS + KHOI PHUC"
+
+    # Step 1: Kiem tra trang thai hien tai
+    Write-Step "INFO" "Buoc 1: Kiem tra trang thai Windows..."
+    Write-Host ""
+    Write-Host "  ── Trang thai hien tai ─────────────────────────────────" -Fore Cyan
+    $dli = & cscript //NoLogo $Script:Slmgr /dli 2>&1
+    foreach ($l in $dli) { if ($l.Trim()) { Write-Host "  $l" } }
+    Write-Host ""
+    $xpr = & cscript //NoLogo $Script:Slmgr /xpr 2>&1
+    foreach ($l in $xpr) { if ($l.Trim()) { Write-Host "  $l" } }
+    Write-Host ""
+
+    # Phan tich
+    $channel = ""; $kmsMachine = ""; $status = ""
+    foreach ($l in $dli) {
+        if ($l -match "License Status:\s*(.+)")     { $status = $Matches[1].Trim() }
+        if ($l -match "Product Key Channel:\s*(.+)") { $channel = $Matches[1].Trim() }
+        if ($l -match "KMS Machine Name:\s*(.+)")    { $kmsMachine = $Matches[1].Trim() }
+    }
+
+    Write-Host "  ── Phan tich ───────────────────────────────────────────" -Fore Cyan
+    Write-Host "  Trang thai:  $status" -Fore $(if ($status -match "Licensed") { "Green" } else { "Red" })
+    Write-Host "  Channel:     $channel" -Fore $(if ($channel -match "Volume_KMS") { "Yellow" } else { "White" })
+    if ($kmsMachine) { Write-Host "  KMS Server:  $kmsMachine" -Fore Yellow }
+
+    $hasKMS = ($channel -match "Volume_KMS" -or $kmsMachine)
+    if (-not $hasKMS) {
+        Write-Host ""
+        Write-Step "OK" "Windows khong co cau hinh KMS. Khong can go." "OK"
+        if ($status -match "Licensed") {
+            Write-Step "PASS" "Windows da kich hoat hop le!" "PASS"
+        }
+        return
+    }
+
+    Write-Host ""
+    Write-Host "  ── Cau hinh se go bo ───────────────────────────────────" -Fore Yellow
+    Write-Host "    [x] Go Product Key hien tai" -Fore White
+    Write-Host "    [x] Xoa KMS Server" -Fore White
+    Write-Host "    [x] Xoa Registry Key" -Fore White
+    Write-Host "    [x] Reset Activation (rearm)" -Fore White
+    Write-Host "    [x] Xoa Registry KMS entries" -Fore White
+    Write-Host "    [x] Xoa KMS files & thu muc" -Fore White
+    Write-Host "    [x] Xoa KMS Scheduled Tasks" -Fore White
+    Write-Host "    [x] Xoa KMS Services" -Fore White
+    Write-Host ""
+    if (-not (Confirm-Proceed "Ban co muon go KMS Windows?")) { return }
+
+    # Step 2: Backup
+    Write-Host ""
+    Write-Step "INFO" "Buoc 2: Tao backup..."
+    if (!(Test-Path $Script:BackupDir)) { New-Item -ItemType Directory $Script:BackupDir -Force | Out-Null }
+    reg export "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform" "$Script:BackupDir\windows_spp_backup.reg" /y 2>&1 | Out-Null
+    Write-Step "OK" "Backup: $Script:BackupDir\windows_spp_backup.reg" "OK"
+
+    # Step 3: Go KMS Windows
+    Write-Host ""
+    Write-Step "INFO" "Buoc 3: Go cau hinh KMS Windows..."
+    Run-Slmgr "/upk"  "Go Product Key"
+    Run-Slmgr "/cpky" "Xoa Registry Key"
+    Run-Slmgr "/ckms" "Xoa KMS Server"
+    Run-Slmgr "/rearm" "Reset Activation"
+
+    # Step 4: Xoa KMS Registry
+    Write-Host ""
+    Write-Step "INFO" "Buoc 4: Xoa KMS Registry..."
+    $rc = 0
+    foreach ($e in $Script:KMSRegistryKeys) {
+        try {
+            if ($e.Name) {
+                if (Get-ItemProperty $e.Path -Name $e.Name -EA SilentlyContinue) {
+                    Remove-ItemProperty $e.Path -Name $e.Name -Force -EA SilentlyContinue
+                    $rc++
+                }
+            } else {
+                if (Test-Path $e.Path) {
+                    Remove-Item $e.Path -Recurse -Force -EA SilentlyContinue
+                    $rc++
+                }
+            }
+        } catch {}
+    }
+    Write-Step "OK" "Da xoa $rc registry entries" "OK"
+
+    # Step 5: Xoa KMS Files
+    Write-Host ""
+    Write-Step "INFO" "Buoc 5: Xoa KMS files & thu muc..."
+    $fc = 0
+    foreach ($d in $Script:KMSDirectories) {
+        if (Test-Path $d) {
+            Remove-Item $d -Recurse -Force -EA SilentlyContinue
+            Write-Step "DEL" "Da xoa: $d" "DEL"
+            $fc++
+        }
+    }
+    foreach ($f in $Script:KMSFiles) {
+        if (Test-Path $f) {
+            takeown /f $f 2>$null | Out-Null
+            icacls $f /grant administrators:F 2>$null | Out-Null
+            Remove-Item $f -Force -EA SilentlyContinue
+            Write-Step "DEL" "Da xoa: $f" "DEL"
+            $fc++
+        }
+    }
+    if ($fc -eq 0) { Write-Step "OK" "Khong co KMS files" "OK" }
+
+    # Step 6: Xoa KMS Tasks
+    Write-Host ""
+    Write-Step "INFO" "Buoc 6: Xoa KMS Scheduled Tasks..."
+    foreach ($t in $Script:KMSTasks) {
+        Unregister-ScheduledTask $t -Confirm:$false -EA SilentlyContinue
+    }
+    Write-Step "OK" "Da xoa KMS tasks" "OK"
+
+    # Step 7: Xoa KMS Services
+    Write-Host ""
+    Write-Step "INFO" "Buoc 7: Xoa KMS Services..."
+    foreach ($kw in $Script:KMSServiceNames) {
+        $svcs = Get-Service "*$kw*" -EA SilentlyContinue
+        foreach ($svc in $svcs) {
+            Stop-Service $svc.Name -Force -EA SilentlyContinue
+            & sc.exe delete $svc.Name 2>&1 | Out-Null
+            Write-Step "DEL" "Da xoa service: $($svc.Name)" "DEL"
+        }
+    }
+
+    # Step 8: Khoi phuc Windows Update
+    Write-Host ""
+    Write-Step "INFO" "Buoc 8: Khoi phuc dich vu he thong..."
+    try {
+        Set-Service wuauserv -StartupType Automatic -EA SilentlyContinue
+        Start-Service wuauserv -EA SilentlyContinue
+        Write-Step "OK" "Windows Update: Running" "OK"
+    } catch {}
+
+    # Step 9: Sua loi he thong
+    Write-Host ""
+    Write-Step "INFO" "Buoc 9: Sua loi he thong (DISM + SFC)..."
+    & DISM /Online /Cleanup-Image /RestoreHealth 2>&1 | Out-Null
+    Write-Step "OK" "DISM RestoreHealth hoan tat" "OK"
+    & sfc /scannow 2>&1 | Out-Null
+    Write-Step "OK" "SFC hoan tat" "OK"
+
+    # Step 10: Xac minh
+    Write-Host ""
+    Write-Step "INFO" "Buoc 10: Xac minh ket qua..."
+    Write-Host ""
+    Write-Host "  ── Trang thai sau khi go ───────────────────────────────" -Fore Cyan
+    & cscript //NoLogo $Script:Slmgr /dli 2>&1 | ForEach-Object { if ($_.Trim()) { Write-Host "  $_" } }
+    Write-Host ""
+    & cscript //NoLogo $Script:Slmgr /xpr 2>&1 | ForEach-Object { if ($_.Trim()) { Write-Host "  $_" } }
+
+    Write-Host ""
+    Write-Host "  ── HOAN TAT ────────────────────────────────────────────" -Fore Green
+    Write-Host "  Windows da duoc go KMS va khoi phuc." -Fore Green
+    Write-Host "  Ban can nhap Product Key hop le de kich hoat." -Fore Yellow
+    Write-Host "  Su dung menu [9] de nhap key moi." -Fore Yellow
+    Write-Host ""
+
+    $r = Read-Host "  Khoi dong lai ngay? (Y/N)"
+    if ($r -eq 'Y' -or $r -eq 'y') { shutdown /r /t 10 /c "Go KMS Windows - Pho Tue Software" }
+}
+
+# ──────────────────────────────────────────────────────────
+#  OFFICE: Kiem tra + Go KMS + Khoi phuc
+# ──────────────────────────────────────────────────────────
+function Repair-OfficeLicense {
+    Write-Header "OFFICE: KIEM TRA + GO KMS + KHOI PHUC"
+
+    # Tim Office OSPP.VBS
+    $osppPaths = @(
+        "$env:ProgramFiles\Microsoft Office\Office16\OSPP.VBS",
+        "${env:ProgramFiles(x86)}\Microsoft Office\Office16\OSPP.VBS",
+        "$env:ProgramFiles\Microsoft Office\Office15\OSPP.VBS",
+        "${env:ProgramFiles(x86)}\Microsoft Office\Office15\OSPP.VBS"
+    )
+    $ospp = $osppPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+    if (-not $ospp) {
+        Write-Step "WARN" "Khong tim thay Office (OSPP.VBS)" "WARN"
+        # Thu tim qua Registry
+        $c2r = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Office\ClickToRun\Configuration" -EA SilentlyContinue
+        if ($c2r) {
+            Write-Host "  Office Click-to-Run: $($c2r.ProductReleaseIds)" -Fore Cyan
+            Write-Host "  Version: $($c2r.ClientVersionToReport)" -Fore Cyan
+        } else {
+            Write-Step "WARN" "Khong tim thay Office nao tren he thong" "WARN"
+        }
+        return
+    }
+
+    # Step 1: Kiem tra trang thai
+    Write-Step "INFO" "Buoc 1: Kiem tra trang thai Office..."
+    Write-Host "  OSPP: $ospp" -Fore DarkGray
+    Write-Host ""
+    Write-Host "  ── Trang thai hien tai ─────────────────────────────────" -Fore Cyan
+    $out = & cscript //NoLogo $ospp /dstatus 2>&1
+    foreach ($l in $out) { if ($l.Trim()) { Write-Host "  $l" } }
+    Write-Host ""
+
+    # Phan tich
+    $hasKMS = $false
+    $licenseNames = @()
+    $cur = @{}
+    foreach ($l in $out) {
+        if ($l -match "LICENSE NAME:\s*(.+)") { $cur.LicenseName = $Matches[1].Trim() }
+        if ($l -match "LICENSE STATUS:\s*(.+)") { $cur.LicenseStatus = $Matches[1].Trim() }
+        if ($l -match "KMS machine name:\s*(.+)") { $cur.KMSMachine = $Matches[1].Trim(); $hasKMS = $true }
+        if ($l -match "---") {
+            if ($cur.LicenseName) { $licenseNames += $cur.Clone() }
+            $cur = @{}
+        }
+    }
+    if ($cur.LicenseName) { $licenseNames += $cur.Clone() }
+
+    Write-Host "  ── Phan tich ───────────────────────────────────────────" -Fore Cyan
+    foreach ($ln in $licenseNames) {
+        $sc = if ($ln.LicenseStatus -match "LICENSED") { "Green" } else { "Yellow" }
+        Write-Host "  $($ln.LicenseName): " -NoNewline; Write-Host $ln.LicenseStatus -Fore $sc
+        if ($ln.KMSMachine) { Write-Host "    KMS: $($ln.KMSMachine)" -Fore Yellow }
+    }
+
+    if (-not $hasKMS) {
+        Write-Host ""
+        Write-Step "OK" "Office khong co cau hinh KMS. Khong can go." "OK"
+        return
+    }
+
+    Write-Host ""
+    Write-Host "  ── Cau hinh se go bo ───────────────────────────────────" -Fore Yellow
+    Write-Host "    [x] Xoa KMS Machine Name (remhst)" -Fore White
+    Write-Host "    [x] Reset Office license (cnsstsku)" -Fore White
+    Write-Host "    [x] Xoa Office KMS Registry" -Fore White
+    Write-Host ""
+    if (-not (Confirm-Proceed "Ban co muon go KMS Office?")) { return }
+
+    # Step 2: Backup
+    Write-Host ""
+    Write-Step "INFO" "Buoc 2: Tao backup..."
+    if (!(Test-Path $Script:BackupDir)) { New-Item -ItemType Directory $Script:BackupDir -Force | Out-Null }
+    reg export "HKLM\SOFTWARE\Microsoft\OfficeSoftwareProtectionPlatform" "$Script:BackupDir\office_ospp_backup.reg" /y 2>&1 | Out-Null
+    Write-Step "OK" "Backup: $Script:BackupDir" "OK"
+
+    # Step 3: Go KMS Office
+    Write-Host ""
+    Write-Step "INFO" "Buoc 3: Go cau hinh KMS Office..."
+    Write-Step "INFO" "Xoa KMS Machine Name..."
+    & cscript //NoLogo $ospp /remhst 2>&1 | Out-Null
+    Write-Step "OK" "Da xoa KMS Machine Name" "OK"
+
+    Write-Step "INFO" "Reset Office SKU..."
+    & cscript //NoLogo $ospp /cnsstsku 2>&1 | Out-Null
+    Write-Step "OK" "Da reset Office SKU" "OK"
+
+    # Step 4: Xoa Office KMS Registry
+    Write-Host ""
+    Write-Step "INFO" "Buoc 4: Xoa Office KMS Registry..."
+    $osppReg = "HKLM:\SOFTWARE\Microsoft\OfficeSoftwareProtectionPlatform"
+    if (Test-Path "$osppReg\KMS") {
+        Remove-Item "$osppReg\KMS" -Recurse -Force -EA SilentlyContinue
+        Write-Step "OK" "Da xoa Office KMS Registry" "OK"
+    } else {
+        Write-Step "OK" "Khong co Office KMS Registry" "OK"
+    }
+
+    # Step 5: Xoa KMS Tasks lien quan Office
+    Write-Host ""
+    Write-Step "INFO" "Buoc 5: Xoa KMS Tasks lien quan Office..."
+    foreach ($t in @("OfficeKMS", "KMS_Activation", "HEU_KMS")) {
+        Unregister-ScheduledTask $t -Confirm:$false -EA SilentlyContinue
+    }
+    Write-Step "OK" "Da xoa Office KMS tasks" "OK"
+
+    # Step 6: Xac minh
+    Write-Host ""
+    Write-Step "INFO" "Buoc 6: Xac minh ket qua..."
+    Write-Host ""
+    Write-Host "  ── Trang thai sau khi go ───────────────────────────────" -Fore Cyan
+    $out2 = & cscript //NoLogo $ospp /dstatus 2>&1
+    foreach ($l in $out2) { if ($l.Trim()) { Write-Host "  $l" } }
+
+    Write-Host ""
+    Write-Host "  ── HOAN TAT ────────────────────────────────────────────" -Fore Green
+    Write-Host "  Office da duoc go KMS va khoi phuc." -Fore Green
+    Write-Host "  Ban can nhap Product Key Office hop le de kich hoat." -Fore Yellow
+    Write-Host ""
+}
+
+# ──────────────────────────────────────────────────────────
+#  PROJECT: Kiem tra + Go KMS
+# ──────────────────────────────────────────────────────────
+function Repair-ProjectLicense {
+    Write-Header "PROJECT: KIEM TRA + GO KMS"
+
+    $osppPaths = @(
+        "$env:ProgramFiles\Microsoft Office\Office16\OSPP.VBS",
+        "${env:ProgramFiles(x86)}\Microsoft Office\Office16\OSPP.VBS"
+    )
+    $ospp = $osppPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+    if (-not $ospp) { Write-Step "WARN" "Khong tim thay OSPP.VBS" "WARN"; return }
+
+    Write-Step "INFO" "Kiem tra trang thai Project..."
+    $out = & cscript //NoLogo $ospp /dstatus 2>&1
+    $hasProject = $false; $hasKMS = $false; $cur = @{}
+    $projectEntries = @()
+
+    foreach ($l in $out) {
+        if ($l -match "LICENSE NAME:\s*(.+)") { $cur.LicenseName = $Matches[1].Trim() }
+        if ($l -match "LICENSE STATUS:\s*(.+)") { $cur.LicenseStatus = $Matches[1].Trim() }
+        if ($l -match "KMS machine name:\s*(.+)") { $cur.KMSMachine = $Matches[1].Trim() }
+        if ($l -match "---") {
+            if ($cur.LicenseName -match "Project") {
+                $hasProject = $true
+                $projectEntries += $cur.Clone()
+                if ($cur.KMSMachine) { $hasKMS = $true }
+            }
+            $cur = @{}
+        }
+    }
+    if ($cur.LicenseName -match "Project") {
+        $hasProject = $true
+        $projectEntries += $cur.Clone()
+        if ($cur.KMSMachine) { $hasKMS = $true }
+    }
+
+    if (-not $hasProject) {
+        Write-Step "WARN" "Khong tim thay Project tren he thong" "WARN"
+        return
+    }
+
+    Write-Host ""
+    Write-Host "  ── Trang thai hien tai ─────────────────────────────────" -Fore Cyan
+    foreach ($pe in $projectEntries) {
+        $sc = if ($pe.LicenseStatus -match "LICENSED") { "Green" } else { "Yellow" }
+        Write-Host "  $($pe.LicenseName): " -NoNewline; Write-Host $pe.LicenseStatus -Fore $sc
+        if ($pe.KMSMachine) { Write-Host "    KMS: $($pe.KMSMachine)" -Fore Yellow }
+    }
+
+    if (-not $hasKMS) {
+        Write-Host ""
+        Write-Step "OK" "Project khong co cau hinh KMS. Khong can go." "OK"
+        return
+    }
+
+    Write-Host ""
+    if (-not (Confirm-Proceed "Ban co muon go KMS Project?")) { return }
+
+    Write-Step "INFO" "Dang go KMS Project..."
+    & cscript //NoLogo $ospp /remhst 2>&1 | Out-Null
+    & cscript //NoLogo $ospp /cnsstsku 2>&1 | Out-Null
+    Write-Step "OK" "Da go KMS Project" "OK"
+
+    Write-Host ""
+    Write-Host "  ── Trang thai sau khi go ───────────────────────────────" -Fore Cyan
+    & cscript //NoLogo $ospp /dstatus 2>&1 | ForEach-Object {
+        if ($_ -match "Project" -or $_ -match "LICENSE STATUS" -or $_ -match "LICENSE NAME") {
+            Write-Host "  $_"
+        }
+    }
+    Write-Host ""
+    Write-Host "  Project da duoc go KMS. Nhap key hop le de kich hoat." -Fore Green
+    Write-Host ""
+}
+
+# ──────────────────────────────────────────────────────────
+#  VISIO: Kiem tra + Go KMS
+# ──────────────────────────────────────────────────────────
+function Repair-VisioLicense {
+    Write-Header "VISIO: KIEM TRA + GO KMS"
+
+    $osppPaths = @(
+        "$env:ProgramFiles\Microsoft Office\Office16\OSPP.VBS",
+        "${env:ProgramFiles(x86)}\Microsoft Office\Office16\OSPP.VBS"
+    )
+    $ospp = $osppPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+    if (-not $ospp) { Write-Step "WARN" "Khong tim thay OSPP.VBS" "WARN"; return }
+
+    Write-Step "INFO" "Kiem tra trang thai Visio..."
+    $out = & cscript //NoLogo $ospp /dstatus 2>&1
+    $hasVisio = $false; $hasKMS = $false; $cur = @{}
+    $visioEntries = @()
+
+    foreach ($l in $out) {
+        if ($l -match "LICENSE NAME:\s*(.+)") { $cur.LicenseName = $Matches[1].Trim() }
+        if ($l -match "LICENSE STATUS:\s*(.+)") { $cur.LicenseStatus = $Matches[1].Trim() }
+        if ($l -match "KMS machine name:\s*(.+)") { $cur.KMSMachine = $Matches[1].Trim() }
+        if ($l -match "---") {
+            if ($cur.LicenseName -match "Visio") {
+                $hasVisio = $true
+                $visioEntries += $cur.Clone()
+                if ($cur.KMSMachine) { $hasKMS = $true }
+            }
+            $cur = @{}
+        }
+    }
+    if ($cur.LicenseName -match "Visio") {
+        $hasVisio = $true
+        $visioEntries += $cur.Clone()
+        if ($cur.KMSMachine) { $hasKMS = $true }
+    }
+
+    if (-not $hasVisio) {
+        Write-Step "WARN" "Khong tim thay Visio tren he thong" "WARN"
+        return
+    }
+
+    Write-Host ""
+    Write-Host "  ── Trang thai hien tai ─────────────────────────────────" -Fore Cyan
+    foreach ($ve in $visioEntries) {
+        $sc = if ($ve.LicenseStatus -match "LICENSED") { "Green" } else { "Yellow" }
+        Write-Host "  $($ve.LicenseName): " -NoNewline; Write-Host $ve.LicenseStatus -Fore $sc
+        if ($ve.KMSMachine) { Write-Host "    KMS: $($ve.KMSMachine)" -Fore Yellow }
+    }
+
+    if (-not $hasKMS) {
+        Write-Host ""
+        Write-Step "OK" "Visio khong co cau hinh KMS. Khong can go." "OK"
+        return
+    }
+
+    Write-Host ""
+    if (-not (Confirm-Proceed "Ban co muon go KMS Visio?")) { return }
+
+    Write-Step "INFO" "Dang go KMS Visio..."
+    & cscript //NoLogo $ospp /remhst 2>&1 | Out-Null
+    & cscript //NoLogo $ospp /cnsstsku 2>&1 | Out-Null
+    Write-Step "OK" "Da go KMS Visio" "OK"
+
+    Write-Host ""
+    Write-Host "  ── Trang thai sau khi go ───────────────────────────────" -Fore Cyan
+    & cscript //NoLogo $ospp /dstatus 2>&1 | ForEach-Object {
+        if ($_ -match "Visio" -or $_ -match "LICENSE STATUS" -or $_ -match "LICENSE NAME") {
+            Write-Host "  $_"
+        }
+    }
+    Write-Host ""
+    Write-Host "  Visio da duoc go KMS. Nhap key hop le de kich hoat." -Fore Green
+    Write-Host ""
+}
+
+# ──────────────────────────────────────────────────────────
+#  DEFENDER: Kiem tra + Khoi phuc
+# ──────────────────────────────────────────────────────────
+function Repair-Defender {
+    Write-Header "DEFENDER: KIEM TRA + KHOI PHUC"
+
+    Write-Step "INFO" "Kiem tra trang thai Defender..."
+    try {
+        $mp = Get-MpPreference -EA SilentlyContinue
+        $mpStatus = Get-MpComputerStatus -EA SilentlyContinue
+
+        Write-Host ""
+        Write-Host "  ── Trang thai hien tai ─────────────────────────────────" -Fore Cyan
+        Write-Host "  Real-time:        " -NoNewline
+        if ($mp.DisableRealtimeMonitoring) {
+            Write-Host "TAT" -Fore Red
+        } else {
+            Write-Host "BAT" -Fore Green
+        }
+        Write-Host "  Tamper Protection: " -NoNewline
+        if ($mpStatus.TamperProtection) {
+            Write-Host "BAT" -Fore Green
+        } else {
+            Write-Host "TAT" -Fore Red
+        }
+        Write-Host "  Antivirus:        " -NoNewline
+        if ($mpStatus.AntivirusEnabled) {
+            Write-Host "Enabled" -Fore Green
+        } else {
+            Write-Host "Disabled" -Fore Red
+        }
+        Write-Host "  Signatures:       " -NoNewline
+        Write-Host "$($mpStatus.AntivirusSignatureLastUpdated)" -Fore White
+
+        # Exclusions
+        if ($mp.ExclusionPath -and $mp.ExclusionPath.Count -gt 0) {
+            Write-Host ""
+            Write-Host "  ── Exclusions ($($mp.ExclusionPath.Count)) ───────────────────────────────" -Fore Yellow
+            foreach ($ex in $mp.ExclusionPath) { Write-Host "    $ex" -Fore Yellow }
+        }
+        if ($mp.ExclusionProcess -and $mp.ExclusionProcess.Count -gt 0) {
+            Write-Host "  ── Exclusion Processes ($($mp.ExclusionProcess.Count)) ────────────────────" -Fore Yellow
+            foreach ($ex in $mp.ExclusionProcess) { Write-Host "    $ex" -Fore Yellow }
+        }
+
+        # Kiem tra co van de khong
+        $hasIssue = $mp.DisableRealtimeMonitoring -or (-not $mpStatus.TamperProtection) -or
+                    ($mp.ExclusionPath -and $mp.ExclusionPath.Count -gt 0) -or
+                    ($mp.ExclusionProcess -and $mp.ExclusionProcess.Count -gt 0)
+
+        if (-not $hasIssue) {
+            Write-Host ""
+            Write-Step "OK" "Defender binh thuong. Khong can khoi phuc." "OK"
+            return
+        }
+
+        Write-Host ""
+        Write-Host "  ── Se khoi phuc ───────────────────────────────────────" -Fore Yellow
+        if ($mp.DisableRealtimeMonitoring) { Write-Host "    [x] Bat Real-time Protection" -Fore White }
+        if ($mp.ExclusionPath) { Write-Host "    [x] Xoa Exclusion Paths ($($mp.ExclusionPath.Count))" -Fore White }
+        if ($mp.ExclusionProcess) { Write-Host "    [x] Xoa Exclusion Processes ($($mp.ExclusionProcess.Count))" -Fore White }
+        Write-Host ""
+        if (-not (Confirm-Proceed "Ban co muon khoi phuc Defender?")) { return }
+
+        # Khoi phuc
+        Write-Host ""
+        Write-Step "INFO" "Dang khoi phuc Defender..."
+
+        if ($mp.DisableRealtimeMonitoring) {
+            Set-MpPreference -DisableRealtimeMonitoring $false -EA SilentlyContinue
+            Write-Step "OK" "Da bat Real-time Protection" "OK"
+        }
+
+        foreach ($ex in $mp.ExclusionPath) {
+            Remove-MpPreference -ExclusionPath $ex -EA SilentlyContinue
+            Write-Step "DEL" "Da xoa exclusion: $ex" "DEL"
+        }
+        foreach ($ex in $mp.ExclusionProcess) {
+            Remove-MpPreference -ExclusionProcess $ex -EA SilentlyContinue
+            Write-Step "DEL" "Da xoa process exclusion: $ex" "DEL"
+        }
+        foreach ($ex in $mp.ExclusionExtension) {
+            Remove-MpPreference -ExclusionExtension $ex -EA SilentlyContinue
+        }
+
+        # Cap nhat signatures
+        Write-Step "INFO" "Dang cap nhat virus signatures..."
+        try { Update-MpSignature -EA SilentlyContinue; Write-Step "OK" "Da cap nhat signatures" "OK" } catch {}
+
+        Write-Host ""
+        Write-Host "  ── Trang thai sau khi khoi phuc ───────────────────────" -Fore Cyan
+        $mp2 = Get-MpPreference -EA SilentlyContinue
+        Write-Host "  Real-time:  " -NoNewline
+        if ($mp2.DisableRealtimeMonitoring) { Write-Host "TAT" -Fore Red } else { Write-Host "BAT" -Fore Green }
+        Write-Host "  Exclusions: " -NoNewline
+        Write-Host "$(($mp2.ExclusionPath | Measure-Object).Count) paths" -Fore White
+
+        Write-Host ""
+        Write-Host "  Defender da duoc khoi phuc!" -Fore Green
+    } catch {
+        Write-Step "ERROR" "Khong the truy cap Defender: $_" "ERROR"
+    }
+    Write-Host ""
+}
+
+# ──────────────────────────────────────────────────────────
+#  HOSTS: Kiem tra + Khoi phuc
+# ──────────────────────────────────────────────────────────
+function Repair-HostsFile {
+    Write-Header "HOSTS: KIEM TRA + KHOI PHUC"
+
+    Write-Step "INFO" "Kiem tra file Hosts..."
+    if (-not (Test-Path $Script:HostsPath)) {
+        Write-Step "WARN" "Khong tim thay file Hosts" "WARN"
+        return
+    }
+
+    $content = Get-Content $Script:HostsPath
+    $keywords = @("activation", "kms", "crack", "kmspico", "kmsauto", "office", "microsoft.com", "login.microsoftonline.com", "login.live.com")
+    $suspicious = @()
+
+    Write-Host ""
+    Write-Host "  ── Noi dung Hosts ─────────────────────────────────────" -Fore Cyan
+    foreach ($line in $content) {
+        if ($line.Trim() -eq "" -or $line.Trim().StartsWith("#")) {
+            Write-Host "  $line" -Fore DarkGray
+            continue
+        }
+        $isSus = $false
+        foreach ($kw in $keywords) {
+            if ($line -match $kw) { $isSus = $true; break }
+        }
+        if ($isSus) {
+            Write-Host "  $line" -Fore Red
+            $suspicious += $line
+        } else {
+            Write-Host "  $line" -Fore White
+        }
+    }
+
+    Write-Host ""
+    if ($suspicious.Count -eq 0) {
+        Write-Step "OK" "Hosts sach. Khong can khoi phuc." "OK"
+        return
+    }
+
+    Write-Host "  ── Phat hien $($suspicious.Count) dong dang ngo ────────────────" -Fore Yellow
+    foreach ($s in $suspicious) { Write-Host "    $s" -Fore Red }
+    Write-Host ""
+
+    if (-not (Confirm-Proceed "Ban co muon xoa cac dong nay?")) { return }
+
+    # Backup
+    Copy-Item $Script:HostsPath "$Script:HostsPath.backup_$(Get-Date -Format 'yyyyMMdd_HHmmss')" -Force
+    Write-Step "OK" "Da backup Hosts" "OK"
+
+    # Xoa dong dang ngo
+    $clean = $content | Where-Object {
+        $line = $_; $keep = $true
+        foreach ($kw in $keywords) {
+            if ($line -match $kw -and $line -notmatch "^\s*#") { $keep = $false; break }
+        }
+        $keep
+    }
+    $clean | Set-Content $Script:HostsPath -Force -Encoding ASCII
+    Write-Step "OK" "Da xoa $($suspicious.Count) dong khoi Hosts" "OK"
+
+    Write-Host ""
+    Write-Host "  ── Noi dung sau khi khoi phuc ─────────────────────────" -Fore Cyan
+    Get-Content $Script:HostsPath | ForEach-Object { Write-Host "  $_" -Fore $(if ($_ -match "^\s*#") { "DarkGray" } else { "White" }) }
+    Write-Host ""
+    Write-Host "  Hosts da duoc khoi phuc!" -Fore Green
+    Write-Host ""
+}
+
+# ──────────────────────────────────────────────────────────
+#  SCHEDULED TASKS: Kiem tra + Xoa
+# ──────────────────────────────────────────────────────────
+function Repair-ScheduledTasks {
+    Write-Header "SCHEDULED TASKS: KIEM TRA + XOA KMS"
+
+    Write-Step "INFO" "Quet Scheduled Tasks..."
+    $suspicious = @()
+    $kws = $Script:KMSSoftwareKeywords
+
+    Get-ScheduledTask -EA SilentlyContinue | ForEach-Object {
+        foreach ($kw in $kws) {
+            if ($_.TaskName -match $kw -or $_.TaskPath -match $kw) {
+                $suspicious += $_
+            }
+        }
+    }
+
+    Write-Host ""
+    if ($suspicious.Count -eq 0) {
+        Write-Step "OK" "Khong tim thay task dang ngo." "OK"
+        return
+    }
+
+    Write-Host "  ── Tasks dang ngo ($($suspicious.Count)) ─────────────────────────" -Fore Yellow
+    foreach ($t in $suspicious) {
+        Write-Host "    $($t.TaskPath)$($t.TaskName)" -Fore Red
+        Write-Host "      State: $($t.State)" -Fore DarkGray
+    }
+    Write-Host ""
+
+    if (-not (Confirm-Proceed "Ban co muon xoa cac tasks nay?")) { return }
+
+    foreach ($t in $suspicious) {
+        Unregister-ScheduledTask -TaskName $t.TaskName -TaskPath $t.TaskPath -Confirm:$false -EA SilentlyContinue
+        Write-Step "DEL" "Da xoa: $($t.TaskName)" "DEL"
+    }
+    Write-Host ""
+    Write-Host "  Da xoa $($suspicious.Count) tasks!" -Fore Green
+    Write-Host ""
+}
+
+# ──────────────────────────────────────────────────────────
+#  SERVICES: Kiem tra + Xoa KMS
+# ──────────────────────────────────────────────────────────
+function Repair-Services {
+    Write-Header "SERVICES: KIEM TRA + XOA KMS"
+
+    Write-Step "INFO" "Quet Services dang ngo..."
+    $suspicious = @()
+    foreach ($kw in $Script:KMSServiceNames) {
+        $svcs = Get-Service "*$kw*" -EA SilentlyContinue
+        foreach ($svc in $svcs) { $suspicious += $svc }
+    }
+
+    Write-Host ""
+    if ($suspicious.Count -eq 0) {
+        Write-Step "OK" "Khong tim thay service dang ngo." "OK"
+        return
+    }
+
+    Write-Host "  ── Services dang ngo ($($suspicious.Count)) ───────────────────────" -Fore Yellow
+    foreach ($svc in $suspicious) {
+        $sc = if ($svc.Status -eq "Running") { "Red" } else { "Yellow" }
+        Write-Host "    $($svc.Name) [$($svc.Status)] - $($svc.DisplayName)" -Fore $sc
+    }
+    Write-Host ""
+
+    if (-not (Confirm-Proceed "Ban co muon xoa cac services nay?")) { return }
+
+    foreach ($svc in $suspicious) {
+        Stop-Service $svc.Name -Force -EA SilentlyContinue
+        & sc.exe delete $svc.Name 2>&1 | Out-Null
+        Write-Step "DEL" "Da xoa service: $($svc.Name)" "DEL"
+    }
+    Write-Host ""
+    Write-Host "  Da xoa $($suspicious.Count) services!" -Fore Green
+    Write-Host ""
+}
+
+# ──────────────────────────────────────────────────────────
+#  STARTUP: Kiem tra + Xoa KMS
+# ──────────────────────────────────────────────────────────
+function Repair-Startup {
+    Write-Header "STARTUP: KIEM TRA + XOA KMS"
+
+    Write-Step "INFO" "Quet Startup entries..."
+    $suspicious = @()
+    $startupPaths = @(
+        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+        "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+        "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Run"
+    )
+
+    foreach ($sp in $startupPaths) {
+        if (Test-Path $sp) {
+            $props = Get-ItemProperty $sp -EA SilentlyContinue
+            foreach ($prop in $props.PSObject.Properties) {
+                if ($prop.Name -match "^PS") { continue }
+                foreach ($kw in $Script:KMSSoftwareKeywords) {
+                    if ($prop.Name -match $kw -or $prop.Value -match $kw) {
+                        $suspicious += @{ Path=$sp; Name=$prop.Name; Value=$prop.Value }
+                    }
+                }
+            }
+        }
+    }
+
+    Write-Host ""
+    if ($suspicious.Count -eq 0) {
+        Write-Step "OK" "Khong tim thay startup entry dang ngo." "OK"
+        return
+    }
+
+    Write-Host "  ── Startup entries dang ngo ($($suspicious.Count)) ───────────────" -Fore Yellow
+    foreach ($su in $suspicious) {
+        Write-Host "    $($su.Name)" -Fore Red
+        Write-Host "      Path: $($su.Path)" -Fore DarkGray
+        Write-Host "      Value: $($su.Value)" -Fore DarkGray
+    }
+    Write-Host ""
+
+    if (-not (Confirm-Proceed "Ban co muon xoa cac entries nay?")) { return }
+
+    foreach ($su in $suspicious) {
+        Remove-ItemProperty -Path $su.Path -Name $su.Name -Force -EA SilentlyContinue
+        Write-Step "DEL" "Da xoa: $($su.Name)" "DEL"
+    }
+    Write-Host ""
+    Write-Host "  Da xoa $($suspicious.Count) startup entries!" -Fore Green
+    Write-Host ""
+}
+
+# ──────────────────────────────────────────────────────────
+#  SQL SERVER: Kiem tra thong tin
+# ──────────────────────────────────────────────────────────
+function Show-SQLServerInfo {
+    Write-Header "SQL SERVER: KIEM TRA THONG TIN"
+
+    Write-Step "INFO" "Quet SQL Server..."
+    $sqlServices = Get-Service *sql* -EA SilentlyContinue
+
+    Write-Host ""
+    if (-not $sqlServices) {
+        Write-Step "WARN" "Khong tim thay SQL Server tren he thong" "WARN"
+        return
+    }
+
+    Write-Host "  ── SQL Server Services ($($sqlServices.Count)) ─────────────────────" -Fore Cyan
+    foreach ($svc in $sqlServices) {
+        $sc = if ($svc.Status -eq "Running") { "Green" } else { "Yellow" }
+        Write-Host "  $($svc.DisplayName)" -Fore White
+        Write-Host "    Name:      $($svc.Name)" -Fore DarkGray
+        Write-Host "    Status:    " -NoNewline; Write-Host $svc.Status -Fore $sc
+        Write-Host "    StartType: $($svc.StartType)" -Fore DarkGray
+    }
+
+    # SQL Instances
+    Write-Host ""
+    Write-Host "  ── SQL Instances ───────────────────────────────────────" -Fore Cyan
+    foreach ($rp in @("HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server", "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Microsoft SQL Server")) {
+        if (Test-Path $rp) {
+            $instances = Get-ItemProperty "$rp\Instance Names\SQL" -EA SilentlyContinue
+            if ($instances) {
+                foreach ($prop in $instances.PSObject.Properties) {
+                    if ($prop.Name -notmatch "^PS") {
+                        Write-Host "  Instance: $($prop.Name) = $($prop.Value)" -Fore White
+                    }
+                }
+            }
+        }
+    }
+    Write-Host ""
+}
+
+# ──────────────────────────────────────────────────────────
+#  VISUAL STUDIO: Kiem tra thong tin
+# ──────────────────────────────────────────────────────────
+function Show-VisualStudioInfo {
+    Write-Header "VISUAL STUDIO: KIEM TRA THONG TIN"
+
+    Write-Step "INFO" "Quet Visual Studio..."
+    $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+
+    Write-Host ""
+    if (Test-Path $vswhere) {
+        $vsInstalls = & $vswhere -all -format json 2>&1
+        try {
+            $vsData = $vsInstalls | ConvertFrom-Json
+            if ($vsData.Count -eq 0) {
+                Write-Step "WARN" "Khong tim thay Visual Studio" "WARN"
+                return
+            }
+            Write-Host "  ── Visual Studio ($($vsData.Count)) ───────────────────────────" -Fore Cyan
+            foreach ($vs in $vsData) {
+                Write-Host "  $($vs.displayName)" -Fore White
+                Write-Host "    Version:  $($vs.installationVersion)" -Fore DarkGray
+                Write-Host "    Path:     $($vs.installPath)" -Fore DarkGray
+                Write-Host "    Channel:  $($vs.channelId)" -Fore DarkGray
+            }
+        } catch {
+            Write-Step "WARN" "Khong the parse VS data" "WARN"
+        }
+    } else {
+        # Thu tim qua Registry
+        $found = $false
+        foreach ($ver in @("17.0", "16.0", "15.0")) {
+            $rp = "HKLM:\SOFTWARE\Microsoft\VisualStudio\$ver"
+            if (Test-Path $rp) {
+                Write-Host "  Visual Studio $ver (Registry)" -Fore Cyan
+                $found = $true
+            }
+        }
+        if (-not $found) {
+            Write-Step "WARN" "Khong tim thay Visual Studio" "WARN"
+        }
+    }
+    Write-Host ""
+}
+
+# ──────────────────────────────────────────────────────────
+#  MICROSOFT 365: Kiem tra thong tin
+# ──────────────────────────────────────────────────────────
+function Show-M365Info {
+    Write-Header "MICROSOFT 365: KIEM TRA THONG TIN"
+
+    Write-Step "INFO" "Quet Microsoft 365..."
+    Write-Host ""
+
+    $c2rReg = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Office\ClickToRun\Configuration" -EA SilentlyContinue
+    if (-not $c2rReg) {
+        Write-Step "WARN" "Khong tim thay Microsoft 365 / Office Click-to-Run" "WARN"
+        return
+    }
+
+    Write-Host "  ── Microsoft 365 / Click-to-Run ────────────────────────" -Fore Cyan
+    Write-Host "  Products:      $($c2rReg.ProductReleaseIds)" -Fore White
+    Write-Host "  Channel:       $($c2rReg.UpdateChannel)" -Fore White
+    Write-Host "  Version:       $($c2rReg.ClientVersionToReport)" -Fore White
+    Write-Host "  Platform:      $($c2rReg.Platform)" -Fore White
+
+    if ($c2rReg.SharedComputerLicensing -eq "1") {
+        Write-Host "  Shared CA:     " -NoNewline; Write-Host "Enabled" -Fore Yellow
+    }
+
+    # Subscription status
+    $subReg = Get-ItemProperty "HKCU:\SOFTWARE\Microsoft\Office\16.0\Common\Licensing\LicensingNext" -EA SilentlyContinue
+    if ($subReg) {
+        Write-Host ""
+        Write-Host "  ── Subscription ────────────────────────────────────────" -Fore Cyan
+        foreach ($prop in $subReg.PSObject.Properties) {
+            if ($prop.Name -notmatch "^PS") {
+                Write-Host "  $($prop.Name): $($prop.Value)" -Fore DarkGray
+            }
+        }
+    }
+    Write-Host ""
+}
+
+# ============================================================
 #  MENU CHINH
 # ============================================================
 function Show-Menu {
@@ -2415,7 +3300,7 @@ function Show-Menu {
         Write-Host "   Pho Tue SoftWare Solutions JSC | HiTechCloud" -Fore DarkGray
         Write-Host "  $line" -Fore Cyan
         Write-Host ""
-        Write-Host "   --- KIEM TOAN VA PHUC HOI ---" -Fore Yellow
+        Write-Host "   --- KIEM TOAN VA PHUC HOI TONG HOP ---" -Fore Yellow
         Write-Host "   [1] " -NoNewline; Write-Host "Kiem toan toan dien (Audit + Cleanup + Activate + Report)" -Fore Green
         Write-Host "   [2] Chi kiem tra thong tin he thong" -Fore White
         Write-Host "   [3] Chi phat hien van de ban quyen" -Fore White
@@ -2423,13 +3308,31 @@ function Show-Menu {
         Write-Host "   [5] Chi kiem tra suc khoe he thong" -Fore White
         Write-Host "   [6] Xuat bao cao (HTML/JSON/TXT/CSV)" -Fore White
         Write-Host ""
-        Write-Host "   --- CHUC NANG DON LE ---" -Fore Yellow
-        Write-Host "   [7] Kiem tra phien ban Windows" -Fore White
-        Write-Host "   [8] Kiem tra trang thai License" -Fore White
-        Write-Host "   [9] Nhap va kich hoat key moi" -Fore White
-        Write-Host "   [A] Sua loi he thong (DISM + SFC)" -Fore White
-        Write-Host "   [B] Nang cap Home -> Pro" -Fore White
-        Write-Host "   [C] Lam sach toan bo (khong kiem tra)" -Fore White
+        Write-Host "   --- WINDOWS ---" -Fore Yellow
+        Write-Host "   [W1] " -NoNewline; Write-Host "Kiem tra + Go KMS Windows + Khoi phuc" -Fore Green
+        Write-Host "   [W2] Kiem tra phien ban Windows" -Fore White
+        Write-Host "   [W3] Kiem tra trang thai License" -Fore White
+        Write-Host "   [W4] Nhap va kich hoat key moi" -Fore White
+        Write-Host "   [W5] Nang cap Home -> Pro" -Fore White
+        Write-Host ""
+        Write-Host "   --- OFFICE / PROJECT / VISIO ---" -Fore Yellow
+        Write-Host "   [O1] " -NoNewline; Write-Host "Kiem tra + Go KMS Office + Khoi phuc" -Fore Green
+        Write-Host "   [O2] Kiem tra + Go KMS Project" -Fore White
+        Write-Host "   [O3] Kiem tra + Go KMS Visio" -Fore White
+        Write-Host "   [O4] Kiem tra Microsoft 365 / Click-to-Run" -Fore White
+        Write-Host ""
+        Write-Host "   --- PHAN MEM KHAC ---" -Fore Yellow
+        Write-Host "   [S1] Kiem tra Visual Studio" -Fore White
+        Write-Host "   [S2] Kiem tra SQL Server" -Fore White
+        Write-Host ""
+        Write-Host "   --- HE THONG ---" -Fore Yellow
+        Write-Host "   [D1] " -NoNewline; Write-Host "Kiem tra + Khoi phuc Defender" -Fore Green
+        Write-Host "   [D2] Kiem tra + Khoi phuc file Hosts" -Fore White
+        Write-Host "   [D3] Kiem tra + Xoa Scheduled Tasks KMS" -Fore White
+        Write-Host "   [D4] Kiem tra + Xoa Services KMS" -Fore White
+        Write-Host "   [D5] Kiem tra + Xoa Startup KMS" -Fore White
+        Write-Host "   [D6] Sua loi he thong (DISM + SFC)" -Fore White
+        Write-Host "   [D7] Lam sach toan bo (khong kiem tra)" -Fore White
         Write-Host ""
         Write-Host "   [0] Thoat" -Fore Red
         Write-Host ""
@@ -2438,22 +3341,55 @@ function Show-Menu {
         $ch = Read-Host "  Chon chuc nang"
 
         switch ($ch) {
-            "1" { Invoke-FullAudit }
-            "2" { Get-SystemInventory; Test-Windows11Compatibility; Get-LicenseAudit }
-            "3" { Get-LicenseAudit; Detect-InvalidActivation }
-            "4" { Detect-InvalidActivation; Confirm-And-Cleanup }
-            "5" { Test-SystemHealth }
-            "6" { Export-QuickReport }
-            "7" { Check-WindowsEdition }
-            "8" { Show-LicenseStatus }
-            "9" { Activate-NewLicense }
-            "a" { Fix-SystemErrors }
-            "A" { Fix-SystemErrors }
-            "b" { Upgrade-HomeToPro }
-            "B" { Upgrade-HomeToPro }
-            "c" { Invoke-FullCleanup }
-            "C" { Invoke-FullCleanup }
-            "0" { $cont = $false }
+            # Kiem toan tong hop
+            "1"  { Invoke-FullAudit }
+            "2"  { Get-SystemInventory; Test-Windows11Compatibility; Get-LicenseAudit }
+            "3"  { Get-LicenseAudit; Detect-InvalidActivation }
+            "4"  { Detect-InvalidActivation; Confirm-And-Cleanup }
+            "5"  { Test-SystemHealth }
+            "6"  { Export-QuickReport }
+            # Windows
+            "W1" { Repair-WindowsLicense }
+            "w1" { Repair-WindowsLicense }
+            "W2" { Check-WindowsEdition }
+            "w2" { Check-WindowsEdition }
+            "W3" { Show-LicenseStatus }
+            "w3" { Show-LicenseStatus }
+            "W4" { Activate-NewLicense }
+            "w4" { Activate-NewLicense }
+            "W5" { Upgrade-HomeToPro }
+            "w5" { Upgrade-HomeToPro }
+            # Office / Project / Visio
+            "O1" { Repair-OfficeLicense }
+            "o1" { Repair-OfficeLicense }
+            "O2" { Repair-ProjectLicense }
+            "o2" { Repair-ProjectLicense }
+            "O3" { Repair-VisioLicense }
+            "o3" { Repair-VisioLicense }
+            "O4" { Show-M365Info }
+            "o4" { Show-M365Info }
+            # Phan mem khac
+            "S1" { Show-VisualStudioInfo }
+            "s1" { Show-VisualStudioInfo }
+            "S2" { Show-SQLServerInfo }
+            "s2" { Show-SQLServerInfo }
+            # He thong
+            "D1" { Repair-Defender }
+            "d1" { Repair-Defender }
+            "D2" { Repair-HostsFile }
+            "d2" { Repair-HostsFile }
+            "D3" { Repair-ScheduledTasks }
+            "d3" { Repair-ScheduledTasks }
+            "D4" { Repair-Services }
+            "d4" { Repair-Services }
+            "D5" { Repair-Startup }
+            "d5" { Repair-Startup }
+            "D6" { Fix-SystemErrors }
+            "d6" { Fix-SystemErrors }
+            "D7" { Invoke-FullCleanup }
+            "d7" { Invoke-FullCleanup }
+            # Thoat
+            "0"  { $cont = $false }
             default {
                 Write-Host "  [!] Lua chon khong hop le." -Fore Red
                 Start-Sleep 1
