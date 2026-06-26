@@ -6,6 +6,7 @@
 # ============================================================
 
 set -e
+export DEBIAN_FRONTEND=noninteractive
 
 # Mau sac
 RED='\033[0;31m'
@@ -217,18 +218,29 @@ fi
 
 if [ "$INSTALL_NGINX" = "y" ]; then
     echo ""
+    export DEBIAN_FRONTEND=noninteractive
 
     # Cai dat Nginx neu chua co
     if [ "$NGINX_EXISTS" = "n" ]; then
         echo -e "  ${YELLOW}[6a] Cai dat Nginx...${NC}"
         if command -v apt-get &> /dev/null; then
-            apt-get install -y -qq nginx > /dev/null 2>&1
+            echo -e "        ${CYAN}[i] Dang cap nhat package list...${NC}"
+            apt-get update -qq 2>/dev/null
+            echo -e "        ${CYAN}[i] Dang cai dat nginx...${NC}"
+            apt-get install -y -qq nginx 2>&1 | tail -3
         elif command -v yum &> /dev/null; then
-            yum install -y nginx > /dev/null 2>&1
+            yum install -y -q nginx 2>&1 | tail -3
         elif command -v dnf &> /dev/null; then
-            dnf install -y nginx > /dev/null 2>&1
+            dnf install -y -q nginx 2>&1 | tail -3
         fi
-        echo -e "        ${GREEN}[OK] Nginx da duoc cai dat${NC}"
+
+        # Kiem tra cai dat thanh cong
+        if command -v nginx &> /dev/null; then
+            echo -e "        ${GREEN}[OK] Nginx da duoc cai dat: $(nginx -v 2>&1)${NC}"
+        else
+            echo -e "        ${RED}[!] Cai dat Nginx that bai. Hay cai thu cong: apt install nginx${NC}"
+            INSTALL_NGINX="n"
+        fi
     else
         echo -e "  ${GREEN}[6a] Nginx da co san - bo qua cai dat${NC}"
     fi
@@ -307,14 +319,19 @@ EOF
 
         # Cai dat certbot neu chua co
         if ! command -v certbot &> /dev/null; then
+            echo -e "        ${CYAN}[i] Dang cai dat certbot...${NC}"
             if command -v apt-get &> /dev/null; then
-                apt-get install -y -qq certbot python3-certbot-nginx > /dev/null 2>&1
+                apt-get install -y -qq certbot python3-certbot-nginx 2>&1 | tail -3
             elif command -v yum &> /dev/null; then
-                yum install -y certbot python3-certbot-nginx > /dev/null 2>&1
+                yum install -y -q certbot python3-certbot-nginx 2>&1 | tail -3
             elif command -v dnf &> /dev/null; then
-                dnf install -y certbot python3-certbot-nginx > /dev/null 2>&1
+                dnf install -y -q certbot python3-certbot-nginx 2>&1 | tail -3
             fi
-            echo -e "        ${GREEN}[OK] Certbot da duoc cai dat${NC}"
+            if command -v certbot &> /dev/null; then
+                echo -e "        ${GREEN}[OK] Certbot da duoc cai dat${NC}"
+            else
+                echo -e "        ${RED}[!] Cai dat Certbot that bai. Hay cai thu cong.${NC}"
+            fi
         else
             echo -e "        ${GREEN}[OK] Certbot da co san - bo qua cai dat${NC}"
         fi
