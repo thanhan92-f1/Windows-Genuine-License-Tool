@@ -2402,6 +2402,1437 @@ function Export-QuickReport {
 }
 
 # ============================================================
+#  MULTI-LANGUAGE SYSTEM (i18n)
+# ============================================================
+$Script:Lang = "vi"
+$Script:T = @{}
+
+# Vietnamese
+$Script:Lang_vi = @{
+    # Menu
+    MenuTitle       = "CONG CU KIEM TOAN VA PHUC HOI BAN QUYEN MICROSOFT"
+    MenuAudit       = "KIEM TOAN VA PHUC HOI TONG HOP"
+    MenuFull        = "Kiem toan toan dien (Audit + Cleanup + Activate + Report)"
+    MenuSysInfo     = "Chi kiem tra thong tin he thong"
+    MenuDetect      = "Chi phat hien van de ban quyen"
+    MenuCleanup     = "Chi lam sach he thong (can xac nhan)"
+    MenuHealth      = "Chi kiem tra suc khoe he thong"
+    MenuReport      = "Xuat bao cao (HTML/JSON/TXT/CSV)"
+    MenuWindows     = "WINDOWS"
+    MenuOffice      = "OFFICE / PROJECT / VISIO"
+    MenuOther       = "PHAN MEM KHAC"
+    MenuSystem      = "HE THONG"
+    MenuExit        = "Thoat"
+    # Phases
+    PhaseAudit      = "PHASE: KIEM TOAN DOC LAP (Chi doc)"
+    PhaseComply     = "PHASE: KIEM TRA TIEU CHUAN DOANH NGHIEP"
+    PhaseRecovery   = "PHASE: PHUC HOI LICENSE"
+    PhaseDeploy     = "PHASE: TRIEN KHAI LICENSE (Batch)"
+    PhaseWinUp      = "PHASE: NANG CAP WINDOWS"
+    PhaseOffUp      = "PHASE: NANG CAP OFFICE"
+    PhaseCenter     = "PHASE: TRUNG TAM SAN PHAM MICROSOFT"
+    PhaseSecurity   = "PHASE: KIEM TRA BAO MAT"
+    PhaseHealth     = "PHASE: KIEM TRA SUC KHOE"
+    PhaseCleanup    = "PHASE: DON DEP HE THONG"
+    PhaseBackup     = "PHASE: SAO LUU"
+    PhaseRestore    = "PHASE: KHOI PHUC"
+    # Status
+    StatusPass      = "DAT"
+    StatusFail      = "KHONG DAT"
+    StatusWarn      = "CAN KIEM TRA"
+    StatusOK        = "BINH THUONG"
+    StatusMissing   = "KHONG TIM THAY"
+    # Actions
+    ActionProceed   = "Ban co muon tiep tuc?"
+    ActionConfirm   = "Xac nhan"
+    ActionCancel    = "Huy"
+    ActionBackup    = "Dang tao backup..."
+    ActionRepair    = "Dang sua chua..."
+    ActionDone      = "HOAN TAT!"
+    # Report
+    ReportTitle     = "BAO CAO KIEM TOAN BAN QUYEN MICROSOFT"
+    ReportMachine   = "May tinh"
+    ReportDate      = "Ngay"
+    ReportVersion   = "Phien ban"
+}
+
+# English
+$Script:Lang_en = @{
+    MenuTitle       = "MICROSOFT LICENSE AUDIT & RECOVERY TOOL"
+    MenuAudit       = "AUDIT & RECOVERY"
+    MenuFull        = "Full Audit (Audit + Cleanup + Activate + Report)"
+    MenuSysInfo     = "System Information Only"
+    MenuDetect      = "License Issues Detection Only"
+    MenuCleanup     = "System Cleanup (requires confirmation)"
+    MenuHealth      = "System Health Check Only"
+    MenuReport      = "Export Report (HTML/JSON/TXT/CSV)"
+    MenuWindows     = "WINDOWS"
+    MenuOffice      = "OFFICE / PROJECT / VISIO"
+    MenuOther       = "OTHER SOFTWARE"
+    MenuSystem      = "SYSTEM"
+    MenuExit        = "Exit"
+    PhaseAudit      = "PHASE: READ-ONLY AUDIT"
+    PhaseComply     = "PHASE: ENTERPRISE COMPLIANCE CHECK"
+    PhaseRecovery   = "PHASE: LICENSE RECOVERY"
+    PhaseDeploy     = "PHASE: LICENSE DEPLOYMENT (Batch)"
+    PhaseWinUp      = "PHASE: WINDOWS UPGRADE"
+    PhaseOffUp      = "PHASE: OFFICE UPGRADE"
+    PhaseCenter     = "PHASE: MICROSOFT PRODUCT CENTER"
+    PhaseSecurity   = "PHASE: SECURITY SCAN"
+    PhaseHealth     = "PHASE: HEALTH CHECK"
+    PhaseCleanup    = "PHASE: SYSTEM CLEANUP"
+    PhaseBackup     = "PHASE: BACKUP"
+    PhaseRestore    = "PHASE: RESTORE"
+    StatusPass      = "PASS"
+    StatusFail      = "FAIL"
+    StatusWarn      = "NEEDS REVIEW"
+    StatusOK        = "OK"
+    StatusMissing   = "NOT FOUND"
+    ActionProceed   = "Do you want to proceed?"
+    ActionConfirm   = "Confirm"
+    ActionCancel    = "Cancel"
+    ActionBackup    = "Creating backup..."
+    ActionRepair    = "Repairing..."
+    ActionDone      = "DONE!"
+    ReportTitle     = "MICROSOFT LICENSE AUDIT REPORT"
+    ReportMachine   = "Machine"
+    ReportDate      = "Date"
+    ReportVersion   = "Version"
+}
+
+# Japanese
+$Script:Lang_ja = @{
+    MenuTitle       = "Microsoft ライセンス監査・回復ツール"
+    MenuFull        = "フル監査 (監査+クリーンアップ+アクティベート+レポート)"
+    MenuExit        = "終了"
+    StatusPass      = "合格"
+    StatusFail      = "不合格"
+    ActionDone      = "完了!"
+}
+
+# Chinese
+$Script:Lang_zh = @{
+    MenuTitle       = "Microsoft 许可审计与恢复工具"
+    MenuFull        = "完整审计 (审计+清理+激活+报告)"
+    MenuExit        = "退出"
+    StatusPass      = "通过"
+    StatusFail      = "未通过"
+    ActionDone      = "完成!"
+}
+
+# German
+$Script:Lang_de = @{
+    MenuTitle       = "Microsoft Lizenz-Audit- & Wiederherstellungstool"
+    MenuFull        = "Vollständiges Audit (Audit+Cleanup+Aktivierung+Bericht)"
+    MenuExit        = "Beenden"
+    StatusPass      = "BESTANDEN"
+    StatusFail      = "NICHT BESTANDEN"
+    ActionDone      = "FERTIG!"
+}
+
+# French
+$Script:Lang_fr = @{
+    MenuTitle       = "Outil d'audit et de récupération de licences Microsoft"
+    MenuFull        = "Audit complet (Audit+Nettoyage+Activation+Rapport)"
+    MenuExit        = "Quitter"
+    StatusPass      = "RÉUSSI"
+    StatusFail      = "ÉCHOUÉ"
+    ActionDone      = "TERMINÉ!"
+}
+
+function Set-Language {
+    param([string]$Code)
+    $Script:Lang = $Code
+    $langVar = "Lang_$Code"
+    if (Get-Variable -Name $langVar -Scope Script -EA SilentlyContinue) {
+        $Script:T = (Get-Variable -Name $langVar -Scope Script).Value
+    } else {
+        $Script:T = $Script:Lang_vi
+    }
+}
+
+function Get-T {
+    param([string]$Key)
+    if ($Script:T.ContainsKey($Key)) { return $Script:T[$Key] }
+    if ($Script:Lang_vi.ContainsKey($Key)) { return $Script:Lang_vi[$Key] }
+    return $Key
+}
+
+# Default language
+Set-Language "vi"
+
+# ============================================================
+#  PHASE: AUDIT DOC LAP (Chi doc - khong thay doi)
+# ============================================================
+function Invoke-ReadOnlyAudit {
+    Write-Header "AUDIT DOC LAP (Chi doc - khong thay doi he thong)"
+    Write-Host "  Muc chi: Chi thu thap va hien thi thong tin, KHONG thay doi gi." -Fore Yellow
+    Write-Host ""
+
+    $auditData = @{
+        Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        Machine   = $env:COMPUTERNAME
+        Products  = @{}
+    }
+
+    # Windows
+    Write-Step "INFO" "── Windows ─────────────────────────────────────────────"
+    $nt = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -EA SilentlyContinue
+    $winInfo = @{
+        ProductName    = $nt.ProductName
+        DisplayVersion = $nt.DisplayVersion
+        CurrentBuild   = $nt.CurrentBuild
+        UBR            = $nt.UBR
+    }
+    $dli = & cscript //NoLogo $Script:Slmgr /dli 2>&1
+    foreach ($l in $dli) {
+        if ($l -match "License Status:\s*(.+)")     { $winInfo.LicenseStatus = $Matches[1].Trim() }
+        if ($l -match "Product Key Channel:\s*(.+)") { $winInfo.Channel = $Matches[1].Trim() }
+        if ($l -match "Partial Product Key:\s*(.+)") { $winInfo.PartialKey = $Matches[1].Trim() }
+        if ($l -match "KMS Machine Name:\s*(.+)")    { $winInfo.KMSMachine = $Matches[1].Trim() }
+    }
+    $xpr = & cscript //NoLogo $Script:Slmgr /xpr 2>&1
+    $winInfo.Expiration = ($xpr | Where-Object { $_ -match "\S" } | Select-Object -Last 1)
+    try { $winInfo.OEMKey = (Get-CimInstance SoftwareLicensingService -EA SilentlyContinue).OA3xOriginalProductKey } catch {}
+    $auditData.Products.Windows = $winInfo
+    Write-Host "  Product:       $($winInfo.ProductName)" -Fore White
+    Write-Host "  Build:         $($winInfo.CurrentBuild).$($winInfo.UBR)" -Fore White
+    Write-Host "  License:       $($winInfo.LicenseStatus)" -Fore $(if($winInfo.LicenseStatus -match "Licensed"){"Green"}else{"Red"})
+    Write-Host "  Channel:       $($winInfo.Channel)" -Fore White
+    Write-Host "  Expiration:    $($winInfo.Expiration)" -Fore White
+    if ($winInfo.OEMKey) { Write-Host "  OEM Key:       $($winInfo.OEMKey)" -Fore Green }
+    Write-Host ""
+
+    # Office / Project / Visio
+    Write-Step "INFO" "── Office / Project / Visio ────────────────────────────"
+    $osppPaths = @(
+        "$env:ProgramFiles\Microsoft Office\Office16\OSPP.VBS",
+        "${env:ProgramFiles(x86)}\Microsoft Office\Office16\OSPP.VBS",
+        "$env:ProgramFiles\Microsoft Office\Office15\OSPP.VBS"
+    )
+    $ospp = $osppPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+    $officeProducts = @()
+    if ($ospp) {
+        $out = & cscript //NoLogo $ospp /dstatus 2>&1
+        $cur = @{}
+        foreach ($l in $out) {
+            if ($l -match "LICENSE NAME:\s*(.+)")        { $cur.LicenseName = $Matches[1].Trim() }
+            if ($l -match "LICENSE STATUS:\s*(.+)")      { $cur.LicenseStatus = $Matches[1].Trim() }
+            if ($l -match "Last 5 characters.*:\s*(.+)") { $cur.PartialKey = $Matches[1].Trim() }
+            if ($l -match "KMS machine name:\s*(.+)")    { $cur.KMSMachine = $Matches[1].Trim() }
+            if ($l -match "---") {
+                if ($cur.LicenseName) {
+                    $officeProducts += $cur.Clone()
+                    $type = if ($cur.LicenseName -match "Project") { "Project" } elseif ($cur.LicenseName -match "Visio") { "Visio" } else { "Office" }
+                    Write-Host "  $type`: $($cur.LicenseName)" -Fore Cyan
+                    Write-Host "    Status:  $($cur.LicenseStatus)" -Fore $(if($cur.LicenseStatus -match "LICENSED"){"Green"}else{"Yellow"})
+                    if ($cur.KMSMachine) { Write-Host "    KMS:     $($cur.KMSMachine)" -Fore Yellow }
+                }
+                $cur = @{}
+            }
+        }
+        if ($cur.LicenseName) { $officeProducts += $cur.Clone() }
+    } else {
+        Write-Host "  Khong tim thay Office" -Fore DarkGray
+    }
+    $auditData.Products.Office = $officeProducts
+    Write-Host ""
+
+    # Visual Studio
+    Write-Step "INFO" "── Visual Studio ───────────────────────────────────────"
+    $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+    $vsList = @()
+    if (Test-Path $vswhere) {
+        try {
+            $vsData = (& $vswhere -all -format json 2>&1) | ConvertFrom-Json
+            foreach ($vs in $vsData) {
+                $vsList += @{ Name=$vs.displayName; Version=$vs.installationVersion; Path=$vs.installPath }
+                Write-Host "  $($vs.displayName) v$($vs.installationVersion)" -Fore Cyan
+            }
+        } catch {}
+    }
+    if ($vsList.Count -eq 0) { Write-Host "  Khong tim thay Visual Studio" -Fore DarkGray }
+    $auditData.Products.VisualStudio = $vsList
+    Write-Host ""
+
+    # SQL Server
+    Write-Step "INFO" "── SQL Server ──────────────────────────────────────────"
+    $sqlSvc = Get-Service *sql* -EA SilentlyContinue
+    $sqlList = @()
+    if ($sqlSvc) {
+        foreach ($s in $sqlSvc) {
+            $sqlList += @{ Name=$s.DisplayName; Status=$s.Status; StartType=$s.StartType }
+            Write-Host "  $($s.DisplayName) [$($s.Status)]" -Fore Cyan
+        }
+    } else { Write-Host "  Khong tim thay SQL Server" -Fore DarkGray }
+    $auditData.Products.SQLServer = $sqlList
+    Write-Host ""
+
+    # Microsoft 365
+    Write-Step "INFO" "── Microsoft 365 ───────────────────────────────────────"
+    $c2r = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Office\ClickToRun\Configuration" -EA SilentlyContinue
+    if ($c2r) {
+        Write-Host "  Products:  $($c2r.ProductReleaseIds)" -Fore Cyan
+        Write-Host "  Channel:   $($c2r.UpdateChannel)" -Fore Cyan
+        Write-Host "  Version:   $($c2r.ClientVersionToReport)" -Fore Cyan
+        $auditData.Products.M365 = @{ Products=$c2r.ProductReleaseIds; Channel=$c2r.UpdateChannel; Version=$c2r.ClientVersionToReport }
+    } else { Write-Host "  Khong tim thay Microsoft 365" -Fore DarkGray }
+    Write-Host ""
+
+    # OneDrive
+    Write-Step "INFO" "── OneDrive ────────────────────────────────────────────"
+    $odSvc = Get-Service OneSyncSvc* -EA SilentlyContinue
+    $odPath = "$env:LOCALAPPDATA\Microsoft\OneDrive\OneDrive.exe"
+    if (Test-Path $odPath) {
+        $odVer = (Get-Item $odPath).VersionInfo.ProductVersion
+        Write-Host "  OneDrive: $odVer" -Fore Cyan
+        $auditData.Products.OneDrive = @{ Version=$odVer; Path=$odPath }
+    } else { Write-Host "  Khong tim thay OneDrive" -Fore DarkGray }
+    Write-Host ""
+
+    # Teams
+    Write-Step "INFO" "── Microsoft Teams ─────────────────────────────────────"
+    $teamsPaths = @(
+        "$env:LOCALAPPDATA\Microsoft\Teams\current\Teams.exe",
+        "$env:ProgramFiles\Teams Installer\Teams.exe",
+        "${env:ProgramFiles(x86)}\Teams Installer\Teams.exe",
+        "$env:LOCALAPPDATA\Microsoft\Teams\current\teams.exe"
+    )
+    $teamsFound = $false
+    foreach ($tp in $teamsPaths) {
+        if (Test-Path $tp) {
+            $tv = (Get-Item $tp).VersionInfo.ProductVersion
+            Write-Host "  Teams: $tv" -Fore Cyan
+            $auditData.Products.Teams = @{ Version=$tv; Path=$tp }
+            $teamsFound = $true; break
+        }
+    }
+    # New Teams (Windows 11)
+    $newTeams = Get-AppxPackage -AllUsers *MSTeams* -EA SilentlyContinue
+    if ($newTeams) {
+        Write-Host "  New Teams: $($newTeams.Version)" -Fore Cyan
+        $auditData.Products.NewTeams = @{ Version=$newTeams.Version }
+        $teamsFound = $true
+    }
+    if (-not $teamsFound) { Write-Host "  Khong tim thay Teams" -Fore DarkGray }
+    Write-Host ""
+
+    # Edge Enterprise
+    Write-Step "INFO" "── Microsoft Edge ──────────────────────────────────────"
+    $edgePath = "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe"
+    if (Test-Path $edgePath) {
+        $edgeVer = (Get-Item $edgePath).VersionInfo.ProductVersion
+        Write-Host "  Edge: $edgeVer" -Fore Cyan
+        # Check if enterprise
+        $edgeReg = Get-ItemProperty "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -EA SilentlyContinue
+        if ($edgeReg) { Write-Host "  Enterprise Policy: Yes" -Fore Yellow }
+        $auditData.Products.Edge = @{ Version=$edgeVer; Enterprise=($null -ne $edgeReg) }
+    } else { Write-Host "  Khong tim thay Edge" -Fore DarkGray }
+    Write-Host ""
+
+    # Defender
+    Write-Step "INFO" "── Defender ────────────────────────────────────────────"
+    try {
+        $def = Get-MpComputerStatus -EA SilentlyContinue
+        Write-Host "  Antivirus:     $($def.AntivirusEnabled)" -Fore $(if($def.AntivirusEnabled){"Green"}else{"Red"})
+        Write-Host "  Real-time:     $($def.RealTimeProtectionEnabled)" -Fore $(if($def.RealTimeProtectionEnabled){"Green"}else{"Red"})
+        Write-Host "  Signatures:    $($def.AntivirusSignatureLastUpdated)" -Fore White
+        Write-Host "  Tamper:        $($def.TamperProtection)" -Fore $(if($def.TamperProtection){"Green"}else{"Red"})
+        $auditData.Products.Defender = @{
+            Enabled=$def.AntivirusEnabled; RealTime=$def.RealTimeProtectionEnabled
+            Signatures=$def.AntivirusSignatureLastUpdated; Tamper=$def.TamperProtection
+        }
+    } catch { Write-Host "  Khong the truy cap Defender" -Fore DarkGray }
+    Write-Host ""
+
+    # Windows Server
+    if ($nt.ProductName -match "Server") {
+        Write-Step "INFO" "── Windows Server ──────────────────────────────────────"
+        Write-Host "  Edition: $($nt.ProductName)" -Fore Cyan
+        $auditData.Products.WindowsServer = @{ Edition=$nt.ProductName }
+        Write-Host ""
+    }
+
+    # Luu audit data
+    $Script:AuditReport.ReadOnlyAudit = $auditData
+
+    # Xuat bao cao
+    Write-Step "INFO" "Xuat bao cao audit..."
+    if (!(Test-Path $Script:ReportDir)) { New-Item -ItemType Directory $Script:ReportDir -Force | Out-Null }
+    $ts = Get-Date -Format "yyyyMMdd_HHmmss"
+    $jsonPath = Join-Path $Script:ReportDir "ReadOnlyAudit_${env:COMPUTERNAME}_${ts}.json"
+    $auditData | ConvertTo-Json -Depth 10 | Out-File $jsonPath -Encoding UTF8
+    Write-Step "OK" "JSON: $jsonPath" "OK"
+    Write-Host ""
+    Write-Host "  Audit hoan tat. Khong co thay doi nao duoc thuc hien." -Fore Green
+    Write-Host ""
+}
+
+# ============================================================
+#  PHASE: KIEM TRA TIEU CHUAN DOANH NGHIEP (COMPLIANCE)
+# ============================================================
+function Invoke-ComplianceCheck {
+    Write-Header "KIEM TRA TIEU CHUAN DOANH NGHIEP (COMPLIANCE)"
+    $results = @()
+
+    function Check-Comply {
+        param([string]$Name, [bool]$Passed, [string]$Detail)
+        $status = if ($Passed) { "PASS" } else { "FAIL" }
+        $icon = if ($Passed) { "[OK]" } else { "[!!]" }
+        $color = if ($Passed) { "Green" } else { "Red" }
+        Write-Host "  $icon $Name - $Detail" -Fore $color
+        $results += @{ Item=$Name; Status=$status; Detail=$Detail }
+    }
+
+    # Secure Boot
+    try { $sb = Confirm-SecureBootUEFI -EA SilentlyContinue } catch { $sb = $false }
+    Check-Comply "Secure Boot" ($sb -eq $true) $(if($sb){"Enabled"}else{"Disabled"})
+
+    # TPM
+    try {
+        $tpm = Get-Tpm -EA SilentlyContinue
+        Check-Comply "TPM 2.0" ($tpm.TpmPresent -and $tpm.SpecVersion -match "^2\.") "Present=$($tpm.TpmPresent) Version=$($tpm.SpecVersion)"
+    } catch { Check-Comply "TPM 2.0" $false "Not available" }
+
+    # BitLocker
+    try {
+        $bl = Get-BitLockerVolume -MountPoint $env:SystemDrive -EA SilentlyContinue
+        $blOn = $bl.ProtectionStatus -eq "On"
+        Check-Comply "BitLocker" $blOn "Protection=$($bl.ProtectionStatus)"
+    } catch { Check-Comply "BitLocker" $false "Not available" }
+
+    # Defender
+    try {
+        $def = Get-MpComputerStatus -EA SilentlyContinue
+        Check-Comply "Defender" $def.AntivirusEnabled "Enabled=$($def.AntivirusEnabled)"
+        Check-Comply "Tamper Protection" $def.TamperProtection "Status=$($def.TamperProtection)"
+    } catch { Check-Comply "Defender" $false "Not available" }
+
+    # Firewall
+    try {
+        $fw = Get-NetFirewallProfile -EA SilentlyContinue
+        $fwAll = ($fw | Where-Object { $_.Enabled }).Count -eq $fw.Count
+        Check-Comply "Firewall" $fwAll "$(($fw|?{$_.Enabled}).Count)/$($fw.Count) profiles enabled"
+    } catch { Check-Comply "Firewall" $false "Not available" }
+
+    # Windows Update
+    $wu = Get-Service wuauserv -EA SilentlyContinue
+    Check-Comply "Windows Update" ($wu.Status -eq "Running") "Status=$($wu.Status)"
+
+    # Genuine License
+    $dli = & cscript //NoLogo $Script:Slmgr /dli 2>&1
+    $licStatus = ""; foreach ($l in $dli) { if ($l -match "License Status:\s*(.+)") { $licStatus = $Matches[1].Trim() } }
+    Check-Comply "Genuine License" ($licStatus -match "Licensed") "Status=$licStatus"
+
+    # Microsoft Account
+    $maLogged = (Get-CimInstance Win32_ComputerSystem -EA SilentlyContinue).PartOfDomain
+    $maUser = whoami 2>&1
+    Check-Comply "Domain/Account" ($maLogged -or $maUser -match "\\") "User=$maUser"
+
+    # Local Security Policy
+    try {
+        $secPol = secedit /export /cfg "$env:TEMP\secpol.cfg" 2>&1
+        $minPwLen = (Get-Content "$env:TEMP\secpol.cfg" | Where-Object { $_ -match "MinimumPasswordLength" })
+        Check-Comply "Security Policy" ($null -ne $minPwLen) "Password policy exists"
+        Remove-Item "$env:TEMP\secpol.cfg" -Force -EA SilentlyContinue
+    } catch { Check-Comply "Security Policy" $false "Cannot read" }
+
+    # RDP
+    $rdp = Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server" -Name fDenyTSConnections -EA SilentlyContinue
+    $rdpEnabled = $rdp.fDenyTSConnections -eq 0
+    Check-Comply "RDP" $rdpEnabled $(if($rdpEnabled){"Enabled"}else{"Disabled"})
+
+    # SMB
+    $smbSvc = Get-Service LanmanServer -EA SilentlyContinue
+    Check-Comply "SMB" ($smbSvc.Status -eq "Running") "Status=$($smbSvc.Status)"
+
+    # PowerShell Execution Policy
+    $psPolicy = Get-ExecutionPolicy -Scope LocalMachine
+    Check-Comply "PowerShell Policy" ($psPolicy -ne "Unrestricted") "Policy=$psPolicy"
+
+    # Device Guard
+    try {
+        $dg = Get-CimInstance -ClassName Win32_DeviceGuard -Namespace root\Microsoft\Windows\DeviceGuard -EA SilentlyContinue
+        $dgEnabled = $dg.VirtualizationBasedSecurityStatus -eq 2
+        Check-Comply "Device Guard / VBS" $dgEnabled "VBS=$($dg.VirtualizationBasedSecurityStatus)"
+    } catch { Check-Comply "Device Guard / VBS" $false "Not available" }
+
+    # Credential Guard
+    try {
+        $cg = (Get-CimInstance -ClassName Win32_DeviceGuard -Namespace root\Microsoft\Windows\DeviceGuard -EA SilentlyContinue).SecurityServicesRunning
+        $cgEnabled = $cg -contains 1
+        Check-Comply "Credential Guard" $cgEnabled "Running=$cg"
+    } catch { Check-Comply "Credential Guard" $false "Not available" }
+
+    # HVCI
+    try {
+        $hvci = (Get-CimInstance -ClassName Win32_DeviceGuard -Namespace root\Microsoft\Windows\DeviceGuard -EA SilentlyContinue).SecurityServicesRunning
+        $hvciEnabled = $hvci -contains 2
+        Check-Comply "HVCI" $hvciEnabled "Running=$hvci"
+    } catch { Check-Comply "HVCI" $false "Not available" }
+
+    # SmartScreen
+    $ssReg = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" -Name SmartScreenEnabled -EA SilentlyContinue
+    $ssEnabled = $ssReg.SmartScreenEnabled -ne "Off"
+    Check-Comply "SmartScreen" $ssEnabled "Value=$($ssReg.SmartScreenEnabled)"
+
+    # Summary
+    Write-Host ""
+    $passCount = ($results | Where-Object { $_.Status -eq "PASS" }).Count
+    $failCount = ($results | Where-Object { $_.Status -eq "FAIL" }).Count
+    $total = $results.Count
+    if ($failCount -eq 0) {
+        Write-Host "  -> DAT TAT CA TIEU CHUAN ($passCount/$total)" -Fore Green
+    } else {
+        Write-Host "  -> KHONG DAT $failCount / $total tieu chuan" -Fore Red
+        Write-Host "  -> Cac muc khong dat:" -Fore Yellow
+        $results | Where-Object { $_.Status -eq "FAIL" } | ForEach-Object {
+            Write-Host "    [-] $($_.Item): $($_.Detail)" -Fore Red
+        }
+    }
+    $Script:AuditReport.Compliance = $results
+    Write-Host ""
+}
+
+# ============================================================
+#  PHASE: PHUC HOI LICENSE (EXTENDED)
+# ============================================================
+function Invoke-LicenseRecovery {
+    Write-Header "PHUC HOI LICENSE"
+    Write-Host "  Cac buoc phuc hoi:" -Fore Cyan
+    Write-Host "    [1] Remove KMS Configuration" -Fore White
+    Write-Host "    [2] Remove Invalid Product Key" -Fore White
+    Write-Host "    [3] Remove Activation Cache" -Fore White
+    Write-Host "    [4] Restore Hosts" -Fore White
+    Write-Host "    [5] Restore Defender" -Fore White
+    Write-Host "    [6] Restore Registry" -Fore White
+    Write-Host "    [7] Repair SPP (Software Protection)" -Fore White
+    Write-Host "    [8] Repair Windows (DISM + SFC)" -Fore White
+    Write-Host "    [9] Repair Office (OSPP)" -Fore White
+    Write-Host "   [10] Repair Licensing Service" -Fore White
+    Write-Host "   [11] THUC HIEN TAT CA" -Fore Green
+    Write-Host "    [0] Bo qua" -Fore Red
+    Write-Host ""
+    $ch = Read-Host "  Chon (so, nhieu so cach dau phay, hoac 'all')"
+
+    if ($ch -eq "0" -or $ch -eq "") { return }
+
+    # Backup
+    Write-Step "INFO" "Tao backup..."
+    if (!(Test-Path $Script:BackupDir)) { New-Item -ItemType Directory $Script:BackupDir -Force | Out-Null }
+    reg export "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform" "$Script:BackupDir\spp.reg" /y 2>&1 | Out-Null
+    if (Test-Path $Script:HostsPath) { Copy-Item $Script:HostsPath "$Script:BackupDir\hosts" -Force }
+
+    $acts = if ($ch -eq "all" -or $ch -eq "11") { 1..10 } else { $ch -split "[,\s]+" | ForEach-Object { [int]$_ } }
+
+    foreach ($act in $acts) {
+        switch ($act) {
+            1 {
+                Write-Step "DEL" "Remove KMS Configuration..."
+                Run-Slmgr "/ckms" "Xoa KMS Server"
+                foreach ($e in $Script:KMSRegistryKeys) {
+                    try {
+                        if ($e.Name) { Remove-ItemProperty $e.Path -Name $e.Name -Force -EA SilentlyContinue }
+                        else { Remove-Item $e.Path -Recurse -Force -EA SilentlyContinue }
+                    } catch {}
+                }
+            }
+            2 {
+                Write-Step "DEL" "Remove Invalid Product Key..."
+                Run-Slmgr "/upk" "Go Product Key"
+                Run-Slmgr "/cpky" "Xoa Registry Key"
+            }
+            3 {
+                Write-Step "DEL" "Remove Activation Cache..."
+                Run-Slmgr "/rearm" "Reset Activation"
+            }
+            4 {
+                Write-Step "DEL" "Restore Hosts..."
+                if (Test-Path $Script:HostsPath) {
+                    $content = Get-Content $Script:HostsPath
+                    $kws = @("activation","kms","crack","kmspico","kmsauto","office","microsoft.com")
+                    $clean = $content | Where-Object { $l=$_; $k=$true; foreach($w in $kws){if($l-match $w-and $l-notmatch "^\s*#"){$k=$false}}; $k }
+                    $clean | Set-Content $Script:HostsPath -Force -Encoding ASCII
+                    Write-Step "OK" "Hosts da khoi phuc" "OK"
+                }
+            }
+            5 {
+                Write-Step "DEL" "Restore Defender..."
+                try {
+                    Set-MpPreference -DisableRealtimeMonitoring $false -EA SilentlyContinue
+                    $mp = Get-MpPreference -EA SilentlyContinue
+                    if ($mp.ExclusionPath) { foreach ($ex in $mp.ExclusionPath) { Remove-MpPreference -ExclusionPath $ex -EA SilentlyContinue } }
+                    if ($mp.ExclusionProcess) { foreach ($ex in $mp.ExclusionProcess) { Remove-MpPreference -ExclusionProcess $ex -EA SilentlyContinue } }
+                    Write-Step "OK" "Defender da khoi phuc" "OK"
+                } catch {}
+            }
+            6 {
+                Write-Step "DEL" "Restore Registry..."
+                foreach ($e in $Script:KMSRegistryKeys) {
+                    try {
+                        if ($e.Name) { Remove-ItemProperty $e.Path -Name $e.Name -Force -EA SilentlyContinue }
+                    } catch {}
+                }
+                # Remove Office KMS registry
+                $osppReg = "HKLM:\SOFTWARE\Microsoft\OfficeSoftwareProtectionPlatform"
+                if (Test-Path "$osppReg\KMS") { Remove-Item "$osppReg\KMS" -Recurse -Force -EA SilentlyContinue }
+                Write-Step "OK" "Registry da khoi phuc" "OK"
+            }
+            7 {
+                Write-Step "INFO" "Repair SPP..."
+                try { Stop-Service sppsvc -Force -EA SilentlyContinue } catch {}
+                Start-Sleep 2
+                try { Start-Service sppsvc -EA SilentlyContinue; Write-Step "OK" "SPP restarted" "OK" } catch { Write-Step "WARN" "Khong the restart SPP" "WARN" }
+            }
+            8 {
+                Write-Step "INFO" "Repair Windows (DISM + SFC)..."
+                & DISM /Online /Cleanup-Image /RestoreHealth 2>&1 | Out-Null
+                Write-Step "OK" "DISM OK" "OK"
+                & sfc /scannow 2>&1 | Out-Null
+                Write-Step "OK" "SFC OK" "OK"
+            }
+            9 {
+                Write-Step "INFO" "Repair Office..."
+                $ospp = @("$env:ProgramFiles\Microsoft Office\Office16\OSPP.VBS","${env:ProgramFiles(x86)}\Microsoft Office\Office16\OSPP.VBS") | Where-Object { Test-Path $_ } | Select-Object -First 1
+                if ($ospp) {
+                    & cscript //NoLogo $ospp /remhst 2>&1 | Out-Null
+                    Write-Step "OK" "Office KMS removed" "OK"
+                } else { Write-Step "WARN" "Khong tim thay OSPP.VBS" "WARN" }
+            }
+            10 {
+                Write-Step "INFO" "Repair Licensing Service..."
+                try {
+                    Set-Service sppsvc -StartupType Automatic -EA SilentlyContinue
+                    Start-Service sppsvc -EA SilentlyContinue
+                    Set-Service wuauserv -StartupType Automatic -EA SilentlyContinue
+                    Start-Service wuauserv -EA SilentlyContinue
+                    Write-Step "OK" "Licensing services running" "OK"
+                } catch { Write-Step "WARN" "Co loi khi khoi dong services" "WARN" }
+            }
+        }
+    }
+    Write-Host ""
+    Write-Host "  PHUC HOI HOAN TAT!" -Fore Green
+    Write-Host ""
+}
+
+# ============================================================
+#  PHASE: TRIEN KHAI LICENSE (BATCH)
+# ============================================================
+function Invoke-LicenseDeployment {
+    Write-Header "TRIEN KHAI LICENSE (BATCH)"
+    Write-Host "  Nhap key theo dinh dang: MAY_TINH | SAN_PHAM | KEY" -Fore Cyan
+    Write-Host "  Vi du:" -Fore DarkGray
+    Write-Host "    PC001 | Windows 11 Pro | VK7JG-NPHTM-C97JM-9MPGT-3V66T" -Fore DarkGray
+    Write-Host "    PC002 | Office LTSC | XXXXX-XXXXX-XXXXX-XXXXX-XXXXX" -Fore DarkGray
+    Write-Host ""
+    Write-Host "  [1] Nhap thu cong (dang bang)" -Fore White
+    Write-Host "  [2] Import tu file CSV" -Fore White
+    Write-Host "  [3] Import tu file JSON" -Fore White
+    Write-Host "  [0] Bo qua" -Fore Red
+    Write-Host ""
+    $ch = Read-Host "  Chon"
+
+    $licenses = @()
+
+    switch ($ch) {
+        "1" {
+            Write-Host "  Nhap danh sach (mo dong 1 entry, Enter de ket thuc):" -Fore Yellow
+            while ($true) {
+                $line = Read-Host "  "
+                if ([string]::IsNullOrWhiteSpace($line)) { break }
+                $parts = $line -split "\|"
+                if ($parts.Count -ge 3) {
+                    $licenses += @{
+                        Machine = $parts[0].Trim()
+                        Product = $parts[1].Trim()
+                        Key     = $parts[2].Trim() -replace '\s+', ''
+                    }
+                }
+            }
+        }
+        "2" {
+            $csvPath = Read-Host "  Nhap duong dan file CSV"
+            if (Test-Path $csvPath) {
+                $csv = Import-Csv $csvPath
+                foreach ($row in $csv) {
+                    $licenses += @{
+                        Machine = $row.Machine
+                        Product = $row.Product
+                        Key     = $row.Key -replace '\s+', ''
+                    }
+                }
+            } else { Write-Step "ERROR" "Khong tim thay file" "ERROR"; return }
+        }
+        "3" {
+            $jsonPath = Read-Host "  Nhap duong dan file JSON"
+            if (Test-Path $jsonPath) {
+                $json = Get-Content $jsonPath -Raw | ConvertFrom-Json
+                foreach ($item in $json) {
+                    $licenses += @{
+                        Machine = $item.Machine
+                        Product = $item.Product
+                        Key     = $item.Key -replace '\s+', ''
+                    }
+                }
+            } else { Write-Step "ERROR" "Khong tim thay file" "ERROR"; return }
+        }
+        "0" { return }
+    }
+
+    if ($licenses.Count -eq 0) {
+        Write-Step "WARN" "Khong co license nao de trien khai" "WARN"
+        return
+    }
+
+    Write-Host ""
+    Write-Host "  ── Xac nhan trien khai ($($licenses.Count) licenses) ────────────────" -Fore Yellow
+    foreach ($lic in $licenses) {
+        Write-Host "    $($lic.Machine) | $($lic.Product) | $($lic.Key)" -Fore White
+    }
+    Write-Host ""
+    if (-not (Confirm-Proceed "Trien khai tat ca?")) { return }
+
+    $results = @()
+    foreach ($lic in $licenses) {
+        Write-Host ""
+        Write-Step "INFO" "Xu ly: $($lic.Machine) - $($lic.Product)"
+        $ck = $lic.Key -replace '\s+', ''
+
+        # Chi xu ly local machine
+        if ($lic.Machine -eq $env:COMPUTERNAME -or $lic.Machine -eq "." -or $lic.Machine -eq "localhost") {
+            & cscript //NoLogo $Script:Slmgr /ipk $ck 2>&1 | Out-Null
+            & cscript //NoLogo $Script:Slmgr /ato 2>&1 | Out-Null
+            $dli = & cscript //NoLogo $Script:Slmgr /dli 2>&1
+            $ls = ""; foreach ($l in $dli) { if ($l -match "License Status:\s*(.+)") { $ls = $Matches[1].Trim() } }
+            Write-Step $(if($ls-match "Licensed"){"OK"}else{"WARN"}) "$($lic.Machine): $ls" $(if($ls-match "Licensed"){"OK"}else{"WARN"})
+            $results += @{ Machine=$lic.Machine; Product=$lic.Product; Status=$ls }
+        } else {
+            Write-Step "SKIP" "$($lic.Machine): Chi ho tro local machine (dung PSRemoting cho remote)" "SKIP"
+            $results += @{ Machine=$lic.Machine; Product=$lic.Product; Status="SKIP (remote)" }
+        }
+    }
+
+    Write-Host ""
+    Write-Host "  ── Ket qua ─────────────────────────────────────────────" -Fore Cyan
+    foreach ($r in $results) {
+        Write-Host "    $($r.Machine) | $($r.Product) | $($r.Status)" -Fore $(if($r.Status-match "Licensed"){"Green"}else{"Yellow"})
+    }
+    Write-Host ""
+}
+
+# ============================================================
+#  PHASE: NANG CAP WINDOWS
+# ============================================================
+function Invoke-WindowsUpgrade {
+    Write-Header "NANG CAP WINDOWS"
+
+    $nt = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -EA SilentlyContinue
+    $currentBuild = [int]$nt.CurrentBuild
+    $currentVersion = $nt.DisplayVersion
+
+    Write-Host "  Windows hien tai: $($nt.ProductName)" -Fore Cyan
+    Write-Host "  Build:            $($nt.CurrentBuild).$($nt.UBR) ($currentVersion)" -Fore Cyan
+    Write-Host ""
+
+    # Kiem tra dieu kien
+    Write-Step "INFO" "Kiem tra dieu kien nang cap..."
+    $ready = $true
+
+    # CPU
+    $cpu = Get-CimInstance Win32_Processor -EA SilentlyContinue | Select-Object -First 1
+    if ($cpu) {
+        Write-Host "  CPU: $($cpu.Name)" -Fore White
+    }
+
+    # TPM
+    try {
+        $tpm = Get-Tpm -EA SilentlyContinue
+        if ($tpm.TpmPresent -and $tpm.SpecVersion -match "^2\.") {
+            Write-Step "PASS" "TPM 2.0: $($tpm.SpecVersion)" "PASS"
+        } else {
+            Write-Step "FAIL" "TPM 2.0: Khong ho tro" "FAIL"; $ready = $false
+        }
+    } catch { Write-Step "FAIL" "TPM: Not available" "FAIL"; $ready = $false }
+
+    # RAM
+    $ram = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 1)
+    if ($ram -ge 4) { Write-Step "PASS" "RAM: $ram GB" "PASS" } else { Write-Step "FAIL" "RAM: $ram GB (< 4GB)" "FAIL"; $ready = $false }
+
+    # Disk
+    $disk = Get-Disk | Where-Object { $_.IsSystem -eq $true } | Select-Object -First 1
+    $diskGB = [math]::Round($disk.Size / 1GB, 0)
+    if ($diskGB -ge 64) { Write-Step "PASS" "Disk: $diskGB GB" "PASS" } else { Write-Step "FAIL" "Disk: $diskGB GB (< 64GB)" "FAIL"; $ready = $false }
+
+    # GPT
+    if ($disk.PartitionStyle -eq "GPT") { Write-Step "PASS" "GPT: $($disk.PartitionStyle)" "PASS" } else { Write-Step "FAIL" "GPT: $($disk.PartitionStyle)" "FAIL"; $ready = $false }
+
+    # Secure Boot
+    try { $sb = Confirm-SecureBootUEFI -EA SilentlyContinue } catch { $sb = $false }
+    if ($sb) { Write-Step "PASS" "Secure Boot: Enabled" "PASS" } else { Write-Step "FAIL" "Secure Boot: Disabled" "FAIL"; $ready = $false }
+
+    # UEFI
+    $fw = Get-ComputerInfo -Property BiosFirmwareType -EA SilentlyContinue
+    if ($fw.BiosFirmwareType -match "Uefi") { Write-Step "PASS" "UEFI: $($fw.BiosFirmwareType)" "PASS" } else { Write-Step "FAIL" "UEFI: $($fw.BiosFirmwareType)" "FAIL"; $ready = $false }
+
+    Write-Host ""
+    if (-not $ready) {
+        Write-Host "  -> May tinh KHONG DAT dieu kien nang cap Windows 11" -Fore Red
+        Write-Host "  -> Khac phuc cac van de tren truoc khi nang cap." -Fore Yellow
+        return
+    }
+
+    Write-Host "  -> May tinh DAT dieu kien nang cap!" -Fore Green
+    Write-Host ""
+    Write-Host "  [1] Nang cap tu dong (Windows Update)" -Fore White
+    Write-Host "  [2] Nang cap tu ISO" -Fore White
+    Write-Host "  [3] Chi kiem tra (khong nang cap)" -Fore White
+    Write-Host "  [0] Bo qua" -Fore Red
+    Write-Host ""
+    $ch = Read-Host "  Chon"
+
+    switch ($ch) {
+        "1" {
+            Write-Step "INFO" "Mo Windows Update..."
+            Start-Process "ms-settings:windowsupdate-action"
+            Write-Host "  Windows Update da mo. Nhan 'Check for updates' de bat dau." -Fore Yellow
+        }
+        "2" {
+            $isoPath = Read-Host "  Nhap duong dan file ISO"
+            if (Test-Path $isoPath) {
+                Write-Step "INFO" "Mount ISO..."
+                $mount = Mount-DiskImage -ImagePath $isoPath -PassThru
+                $driveLetter = ($mount | Get-Volume).DriveLetter
+                Write-Step "OK" "Da mount tai ${driveLetter}:" "OK"
+                Write-Step "INFO" "Bat dau nang cap..."
+                Start-Process "${driveLetter}:\setup.exe" -Arg "/auto upgrade /quiet /noreboot" -Wait
+                Write-Step "OK" "Nang cap hoan tat. Khoi dong lai de ap dung." "OK"
+            } else {
+                Write-Step "ERROR" "Khong tim thay file ISO" "ERROR"
+            }
+        }
+        "3" {
+            Write-Host "  Kiem tra hoan tat. May tinh dat dieu kien nang cap." -Fore Green
+        }
+    }
+    Write-Host ""
+}
+
+# ============================================================
+#  PHASE: NANG CAP OFFICE
+# ============================================================
+function Invoke-OfficeUpgrade {
+    Write-Header "NANG CAP OFFICE"
+
+    # Kiem tra Office hien tai
+    Write-Step "INFO" "Kiem tra Office hien tai..."
+    $c2r = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Office\ClickToRun\Configuration" -EA SilentlyContinue
+    $ospp = @("$env:ProgramFiles\Microsoft Office\Office16\OSPP.VBS","${env:ProgramFiles(x86)}\Microsoft Office\Office16\OSPP.VBS") | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+    $currentOffice = "Unknown"
+    $currentVersion = "Unknown"
+
+    if ($c2r) {
+        $currentOffice = $c2r.ProductReleaseIds
+        $currentVersion = $c2r.ClientVersionToReport
+    }
+
+    if ($ospp) {
+        $out = & cscript //NoLogo $ospp /dstatus 2>&1
+        foreach ($l in $out) {
+            if ($l -match "LICENSE NAME:\s*(.+)") { $currentOffice = $Matches[1].Trim(); break }
+        }
+    }
+
+    Write-Host "  Office hien tai: $currentOffice" -Fore Cyan
+    Write-Host "  Version:         $currentVersion" -Fore Cyan
+    Write-Host ""
+
+    Write-Host "  Duong dan nang cap:" -Fore Yellow
+    Write-Host "    Office 2016/2019 -> Office LTSC 2024" -Fore White
+    Write-Host "    Office 2021      -> Office LTSC 2024" -Fore White
+    Write-Host "    Office LTSC      -> Microsoft 365 Apps" -Fore White
+    Write-Host ""
+    Write-Host "  [1] Nang cap len Office LTSC 2024" -Fore White
+    Write-Host "  [2] Nang cap len Microsoft 365 Apps" -Fore White
+    Write-Host "  [3] Su dung Office Deployment Tool (ODT)" -Fore White
+    Write-Host "  [0] Bo qua" -Fore Red
+    Write-Host ""
+    $ch = Read-Host "  Chon"
+
+    switch ($ch) {
+        "1" {
+            Write-Step "INFO" "Tai Office LTSC 2024 Deployment Tool..."
+            $odtUrl = "https://officecdn.microsoft.com/db/492350f6-3a01-4f97-b9c0-c7c6ddf67d60/OfficeDeploymentTool_17531-20020.exe"
+            $odtPath = "$env:TEMP\odt.exe"
+            $configPath = "$env:TEMP\odt-config.xml"
+
+            # Tao config
+            $config = @"
+<Configuration>
+  <Add OfficeClientEdition="64" Channel="PerpetualVL2024">
+    <Product ID="ProPlus2024Volume" PIDKEY="XJ2XN-FW8RK-P4HMP-DKDBV-GCVGB">
+      <Language ID="vi-vn" />
+      <Language ID="en-us" />
+    </Product>
+  </Add>
+  <Display Level="Full" AcceptEULA="TRUE" />
+  <Property Name="SharedComputerLicensing" Value="0" />
+</Configuration>
+"@
+            $config | Out-File $configPath -Encoding UTF8
+            Write-Host "  Config: $configPath" -Fore DarkGray
+            Write-Host "  Su dung ODT de cai dat. Chi tiet: https://learn.microsoft.com/office/deployment-tool" -Fore Yellow
+        }
+        "2" {
+            Write-Step "INFO" "Tai Microsoft 365 Apps..."
+            Write-Host "  Truy cap: https://setup.office.com" -Fore Yellow
+            Write-Host "  Hoac su dung ODT voi Product ID: O365ProPlusRetail" -Fore Yellow
+        }
+        "3" {
+            Write-Step "INFO" "Office Deployment Tool"
+            Write-Host "  Download: https://www.microsoft.com/en-us/download/details.aspx?id=49117" -Fore Yellow
+            Write-Host "  Config:   https://config.office.com" -Fore Yellow
+        }
+    }
+    Write-Host ""
+}
+
+# ============================================================
+#  PHASE: TRUNG TAM SAN PHAM MICROSOFT
+# ============================================================
+function Invoke-ProductCenter {
+    Write-Header "TRUNG TAM SAN PHAM MICROSOFT"
+
+    $products = @{}
+
+    # Windows
+    Write-Step "INFO" "── Windows ─────────────────────────────────────────────"
+    $nt = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -EA SilentlyContinue
+    $dli = & cscript //NoLogo $Script:Slmgr /dli 2>&1
+    $ls = ""; $ch = ""
+    foreach ($l in $dli) {
+        if ($l -match "License Status:\s*(.+)") { $ls = $Matches[1].Trim() }
+        if ($l -match "Product Key Channel:\s*(.+)") { $ch = $Matches[1].Trim() }
+    }
+    $products.Windows = @{ Edition=$nt.ProductName; Build="$($nt.CurrentBuild).$($nt.UBR)"; Status=$ls; Channel=$ch }
+    Write-Host "  $($nt.ProductName) - $ls ($ch)" -Fore $(if($ls-match "Licensed"){"Green"}else{"Red"})
+
+    # Windows Server
+    if ($nt.ProductName -match "Server") {
+        $products.WindowsServer = @{ Edition=$nt.ProductName; Status=$ls }
+        Write-Host "  Windows Server: $($nt.ProductName)" -Fore Cyan
+    }
+    Write-Host ""
+
+    # Office / Project / Visio
+    Write-Step "INFO" "── Office / Project / Visio ────────────────────────────"
+    $ospp = @("$env:ProgramFiles\Microsoft Office\Office16\OSPP.VBS","${env:ProgramFiles(x86)}\Microsoft Office\Office16\OSPP.VBS") | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if ($ospp) {
+        $out = & cscript //NoLogo $ospp /dstatus 2>&1
+        $cur = @{}
+        foreach ($l in $out) {
+            if ($l -match "LICENSE NAME:\s*(.+)")   { $cur.LicenseName = $Matches[1].Trim() }
+            if ($l -match "LICENSE STATUS:\s*(.+)") { $cur.LicenseStatus = $Matches[1].Trim() }
+            if ($l -match "---") {
+                if ($cur.LicenseName) {
+                    $type = if ($cur.LicenseName -match "Project") { "Project" } elseif ($cur.LicenseName -match "Visio") { "Visio" } else { "Office" }
+                    $products[$type] = @{ Name=$cur.LicenseName; Status=$cur.LicenseStatus }
+                    Write-Host "  $type`: $($cur.LicenseName) - $($cur.LicenseStatus)" -Fore $(if($cur.LicenseStatus-match "LICENSED"){"Green"}else{"Yellow"})
+                }
+                $cur = @{}
+            }
+        }
+    } else { Write-Host "  Khong tim thay Office" -Fore DarkGray }
+    Write-Host ""
+
+    # Visual Studio
+    Write-Step "INFO" "── Visual Studio ───────────────────────────────────────"
+    $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+    if (Test-Path $vswhere) {
+        try {
+            $vsData = (& $vswhere -all -format json 2>&1) | ConvertFrom-Json
+            foreach ($vs in $vsData) {
+                $products["VS_$($vs.displayName)"] = @{ Name=$vs.displayName; Version=$vs.installationVersion }
+                Write-Host "  $($vs.displayName) v$($vs.installationVersion)" -Fore Cyan
+            }
+        } catch {}
+    } else { Write-Host "  Khong tim thay Visual Studio" -Fore DarkGray }
+    Write-Host ""
+
+    # SQL Server
+    Write-Step "INFO" "── SQL Server ──────────────────────────────────────────"
+    $sqlSvc = Get-Service *sql* -EA SilentlyContinue
+    if ($sqlSvc) {
+        foreach ($s in $sqlSvc) {
+            $products["SQL_$($s.Name)"] = @{ Name=$s.DisplayName; Status=$s.Status }
+            Write-Host "  $($s.DisplayName) [$($s.Status)]" -Fore Cyan
+        }
+    } else { Write-Host "  Khong tim thay SQL Server" -Fore DarkGray }
+    Write-Host ""
+
+    # Exchange
+    Write-Step "INFO" "── Exchange Server ─────────────────────────────────────"
+    $exchSvc = Get-Service *exchange* -EA SilentlyContinue
+    if ($exchSvc) {
+        foreach ($s in $exchSvc) { Write-Host "  $($s.DisplayName) [$($s.Status)]" -Fore Cyan }
+        $products.Exchange = @{ Found=$true }
+    } else { Write-Host "  Khong tim thay Exchange" -Fore DarkGray }
+    Write-Host ""
+
+    # RDS CAL
+    Write-Step "INFO" "── Remote Desktop (RDS CAL) ────────────────────────────"
+    $rdSvc = Get-Service TermServLicensing -EA SilentlyContinue
+    if ($rdSvc) {
+        Write-Host "  RD Licensing: $($rdSvc.Status)" -Fore Cyan
+        $products.RDS = @{ Status=$rdSvc.Status }
+    } else { Write-Host "  Khong tim thay RD Licensing" -Fore DarkGray }
+    Write-Host ""
+
+    # Microsoft 365
+    Write-Step "INFO" "── Microsoft 365 ───────────────────────────────────────"
+    $c2r = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Office\ClickToRun\Configuration" -EA SilentlyContinue
+    if ($c2r) {
+        Write-Host "  Products: $($c2r.ProductReleaseIds)" -Fore Cyan
+        Write-Host "  Channel:  $($c2r.UpdateChannel)" -Fore Cyan
+        $products.M365 = @{ Products=$c2r.ProductReleaseIds; Channel=$c2r.UpdateChannel }
+    } else { Write-Host "  Khong tim thay Microsoft 365" -Fore DarkGray }
+    Write-Host ""
+
+    # Dynamics / Power BI
+    Write-Step "INFO" "── Dynamics / Power BI ─────────────────────────────────"
+    $dynPath = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Dynamics" -EA SilentlyContinue
+    if ($dynPath) { Write-Host "  Dynamics: Found" -Fore Cyan; $products.Dynamics = @{ Found=$true } } else { Write-Host "  Khong tim thay Dynamics" -Fore DarkGray }
+    $pbi = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Microsoft Power BI Desktop" -EA SilentlyContinue
+    if ($pbi) { Write-Host "  Power BI: Found" -Fore Cyan; $products.PowerBI = @{ Found=$true } } else {
+        $pbiApp = Get-AppxPackage *Microsoft.PowerBI* -EA SilentlyContinue
+        if ($pbiApp) { Write-Host "  Power BI: $($pbiApp.Version)" -Fore Cyan; $products.PowerBI = @{ Version=$pbiApp.Version } }
+        else { Write-Host "  Khong tim thay Power BI" -Fore DarkGray }
+    }
+    Write-Host ""
+
+    $Script:AuditReport.ProductCenter = $products
+    Write-Host "  Tong san pham phat hien: $($products.Count)" -Fore Green
+    Write-Host ""
+}
+
+# ============================================================
+#  PHASE: KIEM TRA BAO MAT
+# ============================================================
+function Invoke-SecurityScan {
+    Write-Header "KIEM TRA BAO MAT"
+    $secResults = @()
+
+    function Check-Sec {
+        param([string]$Name, [bool]$Passed, [string]$Detail)
+        $icon = if ($Passed) { "[OK]" } else { "[!!]" }
+        $color = if ($Passed) { "Green" } else { "Red" }
+        Write-Host "  $icon $Name - $Detail" -Fore $color
+        $secResults += @{ Item=$Name; Status=$(if($Passed){"PASS"}else{"FAIL"}); Detail=$Detail }
+    }
+
+    # Defender
+    try {
+        $def = Get-MpComputerStatus -EA SilentlyContinue
+        Check-Sec "Windows Defender" $def.AntivirusEnabled "Enabled=$($def.AntivirusEnabled)"
+        Check-Sec "Real-time Protection" $def.RealTimeProtectionEnabled "Enabled=$($def.RealTimeProtectionEnabled)"
+        Check-Sec "Tamper Protection" $def.TamperProtection "Status=$($def.TamperProtection)"
+    } catch { Check-Sec "Windows Defender" $false "Not available" }
+
+    # Firewall
+    try {
+        $fw = Get-NetFirewallProfile -EA SilentlyContinue
+        $fwAll = ($fw | Where-Object { $_.Enabled }).Count -eq $fw.Count
+        Check-Sec "Firewall" $fwAll "$(($fw|?{$_.Enabled}).Count)/$($fw.Count) enabled"
+    } catch { Check-Sec "Firewall" $false "Not available" }
+
+    # Windows Update
+    $wu = Get-Service wuauserv -EA SilentlyContinue
+    Check-Sec "Windows Update" ($wu.Status -eq "Running") "Status=$($wu.Status)"
+
+    # SmartScreen
+    $ssReg = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" -Name SmartScreenEnabled -EA SilentlyContinue
+    Check-Sec "SmartScreen" ($ssReg.SmartScreenEnabled -ne "Off") "Value=$($ssReg.SmartScreenEnabled)"
+
+    # UAC
+    $uac = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -EA SilentlyContinue
+    Check-Sec "UAC" ($uac.EnableLUA -eq 1) "EnableLUA=$($uac.EnableLUA)"
+
+    # Credential Guard
+    try {
+        $dg = Get-CimInstance -ClassName Win32_DeviceGuard -Namespace root\Microsoft\Windows\DeviceGuard -EA SilentlyContinue
+        $cgEnabled = $dg.SecurityServicesRunning -contains 1
+        Check-Sec "Credential Guard" $cgEnabled "Running=$($dg.SecurityServicesRunning)"
+    } catch { Check-Sec "Credential Guard" $false "Not available" }
+
+    # BitLocker
+    try {
+        $bl = Get-BitLockerVolume -MountPoint $env:SystemDrive -EA SilentlyContinue
+        Check-Sec "BitLocker" ($bl.ProtectionStatus -eq "On") "Protection=$($bl.ProtectionStatus)"
+    } catch { Check-Sec "BitLocker" $false "Not available" }
+
+    # Secure Boot
+    try { $sb = Confirm-SecureBootUEFI -EA SilentlyContinue } catch { $sb = $false }
+    Check-Sec "Secure Boot" ($sb -eq $true) $(if($sb){"Enabled"}else{"Disabled"})
+
+    # TPM
+    try {
+        $tpm = Get-Tpm -EA SilentlyContinue
+        Check-Sec "TPM" ($tpm.TpmPresent -and $tpm.TpmReady) "Present=$($tpm.TpmPresent) Ready=$($tpm.TpmReady)"
+    } catch { Check-Sec "TPM" $false "Not available" }
+
+    # Summary
+    Write-Host ""
+    $passCount = ($secResults | Where-Object { $_.Status -eq "PASS" }).Count
+    $failCount = ($secResults | Where-Object { $_.Status -eq "FAIL" }).Count
+    if ($failCount -eq 0) {
+        Write-Host "  -> BAO MAT TOT ($passCount/$($secResults.Count) PASS)" -Fore Green
+    } else {
+        Write-Host "  -> $failCount van de bao mat can khac phuc" -Fore Red
+    }
+    $Script:AuditReport.SecurityScan = $secResults
+    Write-Host ""
+}
+
+# ============================================================
+#  PHASE: KIEM TRA SUC KHOE (EXTENDED)
+# ============================================================
+function Invoke-HealthCheckExtended {
+    Write-Header "KIEM TRA SUC KHOE HE THONG"
+
+    # DISM
+    Write-Step "INFO" "── DISM ────────────────────────────────────────────────"
+    $dismResult = & DISM /Online /Cleanup-Image /CheckHealth 2>&1
+    $dismOK = $dismResult -match "No component store corruption"
+    Write-Host "  DISM: " -NoNewline
+    if ($dismOK) { Write-Host "OK" -Fore Green } else { Write-Host "Co the co loi" -Fore Yellow }
+
+    # SFC
+    Write-Step "INFO" "── SFC ─────────────────────────────────────────────────"
+    Write-Host "  SFC: Chay 'sfc /scannow' de kiem tra chi tiet" -Fore DarkGray
+
+    # CHKDSK
+    Write-Step "INFO" "── Disk ────────────────────────────────────────────────"
+    $sysDrive = $env:SystemDrive
+    $diskHealth = Get-PhysicalDisk -EA SilentlyContinue | Select-Object -First 1
+    if ($diskHealth) {
+        Write-Host "  Disk Health: $($diskHealth.HealthStatus)" -Fore $(if($diskHealth.HealthStatus-eq "Healthy"){"Green"}else{"Yellow"})
+        Write-Host "  Media Type:  $($diskHealth.MediaType)" -Fore White
+    }
+
+    # Memory
+    Write-Step "INFO" "── Memory ──────────────────────────────────────────────"
+    $ram = Get-CimInstance Win32_PhysicalMemory -EA SilentlyContinue
+    $totalRAM = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 1)
+    Write-Host "  Total RAM: $totalRAM GB ($($ram.Count) sticks)" -Fore White
+    foreach ($m in $ram) {
+        Write-Host "    $($m.DeviceLocator): $([math]::Round($m.Capacity/1GB,1)) GB $($m.Speed) MHz" -Fore DarkGray
+    }
+
+    # Storage SMART
+    Write-Step "INFO" "── SMART ──────────────────────────────────────────────"
+    try {
+        $smart = Get-WmiObject -Namespace root\wmi -Class MSStorageDriver_FailurePredictStatus -EA SilentlyContinue
+        if ($smart) {
+            foreach ($s in $smart) {
+                Write-Host "  Predict Failure: $($s.PredictFailure)" -Fore $(if($s.PredictFailure){"Red"}else{"Green"})
+            }
+        } else { Write-Host "  SMART: Khong the truy cap" -Fore DarkGray }
+    } catch { Write-Host "  SMART: Not available" -Fore DarkGray }
+
+    # Event Viewer (recent errors)
+    Write-Step "INFO" "── Event Viewer (Recent Errors) ────────────────────────"
+    try {
+        $events = Get-WinEvent -FilterHashtable @{LogName='System'; Level=1,2; StartTime=(Get-Date).AddDays(-7)} -MaxEvents 5 -EA SilentlyContinue
+        if ($events) {
+            Write-Host "  $($events.Count) loi gan day:" -Fore Yellow
+            foreach ($e in $events) {
+                Write-Host "    [$($e.TimeCreated.ToString('MM-dd HH:mm'))] $($e.ProviderName): $($e.Message.Substring(0, [Math]::Min(80, $e.Message.Length)))" -Fore DarkGray
+            }
+        } else { Write-Host "  Khong co loi nao trong 7 ngay gan day" -Fore Green }
+    } catch { Write-Host "  Khong the doc Event Log" -Fore DarkGray }
+
+    # Drivers
+    Write-Step "INFO" "── Drivers ─────────────────────────────────────────────"
+    try {
+        $badDrivers = Get-WindowsDriver -Online -EA SilentlyContinue | Where-Object { $_.Version -match "error" }
+        if ($badDrivers) {
+            Write-Host "  $($badDrivers.Count) driver co van de" -Fore Yellow
+        } else {
+            $driverCount = (Get-WindowsDriver -Online -EA SilentlyContinue | Measure-Object).Count
+            Write-Host "  $driverCount drivers binh thuong" -Fore Green
+        }
+    } catch { Write-Host "  Khong the kiem tra drivers" -Fore DarkGray }
+
+    # Pending Updates
+    Write-Step "INFO" "── Pending Updates ─────────────────────────────────────"
+    try {
+        $wuSession = New-Object -ComObject Microsoft.Update.Session
+        $searcher = $wuSession.CreateUpdateSearcher()
+        $pending = $searcher.Search("IsInstalled=0")
+        Write-Host "  Pending Updates: $($pending.Updates.Count)" -Fore $(if($pending.Updates.Count -gt 0){"Yellow"}else{"Green"})
+    } catch { Write-Host "  Khong the kiem tra updates" -Fore DarkGray }
+
+    Write-Host ""
+    Write-Host "  Kiem tra suc khoe hoan tat!" -Fore Green
+    Write-Host ""
+}
+
+# ============================================================
+#  PHASE: DON DEP HE THONG (EXTENDED)
+# ============================================================
+function Invoke-SystemCleanup {
+    Write-Header "DON DEP HE THONG"
+    $totalFreed = 0
+
+    function Remove-TempFolder {
+        param([string]$Path, [string]$Name)
+        if (Test-Path $Path) {
+            $size = (Get-ChildItem $Path -Recurse -EA SilentlyContinue | Measure-Object -Property Length -Sum).Sum
+            $sizeMB = [math]::Round($size / 1MB, 1)
+            Remove-Item "$Path\*" -Recurse -Force -EA SilentlyContinue
+            Write-Step "OK" "$Name`: $sizeMB MB da xoa" "OK"
+            return $size
+        } else {
+            Write-Step "SKIP" "$Name`: Khong tim thay" "SKIP"
+            return 0
+        }
+    }
+
+    Write-Host "  Chon muc don dep:" -Fore Cyan
+    Write-Host "    [1] Windows Temp" -Fore White
+    Write-Host "    [2] Windows Logs" -Fore White
+    Write-Host "    [3] Windows Update Cache" -Fore White
+    Write-Host "    [4] Windows.old" -Fore White
+    Write-Host "    [5] Office Cache" -Fore White
+    Write-Host "    [6] Delivery Optimization" -Fore White
+    Write-Host "    [7] Defender Cache" -Fore White
+    Write-Host "    [8] Recycle Bin" -Fore White
+    Write-Host "    [9] THUC HIEN TAT CA" -Fore Green
+    Write-Host "    [0] Bo qua" -Fore Red
+    Write-Host ""
+    $ch = Read-Host "  Chon (so, nhieu so cach dau phay, hoac 'all')"
+
+    if ($ch -eq "0" -or $ch -eq "") { return }
+
+    $acts = if ($ch -eq "all" -or $ch -eq "9") { 1..8 } else { $ch -split "[,\s]+" | ForEach-Object { [int]$_ } }
+
+    foreach ($act in $acts) {
+        switch ($act) {
+            1 { $totalFreed += Remove-TempFolder "$env:SystemRoot\Temp" "Windows Temp" }
+            2 { $totalFreed += Remove-TempFolder "$env:SystemRoot\Logs" "Windows Logs" }
+            3 {
+                Write-Step "INFO" "Windows Update Cache..."
+                Stop-Service wuauserv -Force -EA SilentlyContinue
+                $totalFreed += Remove-TempFolder "$env:SystemRoot\SoftwareDistribution\Download" "WU Cache"
+                Start-Service wuauserv -EA SilentlyContinue
+            }
+            4 {
+                if (Test-Path "$env:SystemDrive\Windows.old") {
+                    Write-Step "INFO" "Windows.old (can Disk Cleanup hoac xoa thu cong)"
+                    cleanmgr /d $env:SystemDrive /sageset:1 2>&1 | Out-Null
+                } else { Write-Step "SKIP" "Windows.old: Khong ton tai" "SKIP" }
+            }
+            5 {
+                $totalFreed += Remove-TempFolder "$env:LOCALAPPDATA\Microsoft\Office\16.0\Groove" "Office Cache"
+                $totalFreed += Remove-TempFolder "$env:LOCALAPPDATA\Microsoft\Office\OTele" "Office Telemetry"
+            }
+            6 {
+                $totalFreed += Remove-TempFolder "$env:SystemRoot\SoftwareDistribution\DeliveryOptimization" "Delivery Opt"
+            }
+            7 {
+                $totalFreed += Remove-TempFolder "$env:ProgramData\Microsoft\Windows Defender\Scans\History" "Defender Cache"
+            }
+            8 {
+                Write-Step "INFO" "Emptying Recycle Bin..."
+                Clear-RecycleBin -Force -EA SilentlyContinue
+                Write-Step "OK" "Recycle Bin emptied" "OK"
+            }
+        }
+    }
+
+    $totalMB = [math]::Round($totalFreed / 1MB, 1)
+    Write-Host ""
+    Write-Host "  Da don dep: $totalMB MB" -Fore Green
+    Write-Host ""
+}
+
+# ============================================================
+#  PHASE: SAO LUU (BACKUP)
+# ============================================================
+function Invoke-SystemBackup {
+    Write-Header "SAO LUU HE THONG"
+
+    $backupDir = Join-Path $env:TEMP "MS_Backup_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+    New-Item -ItemType Directory $backupDir -Force | Out-Null
+
+    Write-Host "  Thu muc backup: $backupDir" -Fore Cyan
+    Write-Host ""
+
+    # Registry
+    Write-Step "INFO" "Backup Registry..."
+    reg export "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" "$backupDir\winver.reg" /y 2>&1 | Out-Null
+    reg export "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform" "$backupDir\spp.reg" /y 2>&1 | Out-Null
+    reg export "HKLM\SOFTWARE\Microsoft\OfficeSoftwareProtectionPlatform" "$backupDir\ospp.reg" /y 2>&1 | Out-Null
+    reg export "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" "$backupDir\startup_hklm.reg" /y 2>&1 | Out-Null
+    reg export "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" "$backupDir\startup_hkcu.reg" /y 2>&1 | Out-Null
+    Write-Step "OK" "Registry da backup" "OK"
+
+    # License
+    Write-Step "INFO" "Backup License..."
+    & cscript //NoLogo $Script:Slmgr /dlv 2>&1 | Out-File "$backupDir\license_dlv.txt" -Encoding UTF8
+    & cscript //NoLogo $Script:Slmgr /dli 2>&1 | Out-File "$backupDir\license_dli.txt" -Encoding UTF8
+    Write-Step "OK" "License da backup" "OK"
+
+    # Office License
+    Write-Step "INFO" "Backup Office License..."
+    $ospp = @("$env:ProgramFiles\Microsoft Office\Office16\OSPP.VBS","${env:ProgramFiles(x86)}\Microsoft Office\Office16\OSPP.VBS") | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if ($ospp) {
+        & cscript //NoLogo $ospp /dstatus 2>&1 | Out-File "$backupDir\office_license.txt" -Encoding UTF8
+        Write-Step "OK" "Office License da backup" "OK"
+    }
+
+    # Hosts
+    Write-Step "INFO" "Backup Hosts..."
+    if (Test-Path $Script:HostsPath) {
+        Copy-Item $Script:HostsPath "$backupDir\hosts.backup"
+        Write-Step "OK" "Hosts da backup" "OK"
+    }
+
+    # BitLocker Recovery
+    Write-Step "INFO" "Backup BitLocker Recovery Key..."
+    try {
+        $bl = Get-BitLockerVolume -MountPoint $env:SystemDrive -EA SilentlyContinue
+        if ($bl.ProtectionStatus -eq "On") {
+            $bl.KeyProtector | Where-Object { $_.KeyProtectorType -eq "RecoveryPassword" } | ForEach-Object {
+                (Get-BitLockerVolume -MountPoint $env:SystemDrive).KeyProtector | Out-File "$backupDir\bitlocker_recovery.txt"
+            }
+            Write-Step "OK" "BitLocker Recovery Key da backup" "OK"
+        } else { Write-Step "SKIP" "BitLocker khong bat" "SKIP" }
+    } catch { Write-Step "SKIP" "BitLocker khong kha dung" "SKIP" }
+
+    # Installed Apps
+    Write-Step "INFO" "Backup Installed Apps list..."
+    Get-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" -EA SilentlyContinue |
+        Select-Object DisplayName, DisplayVersion, Publisher, InstallDate |
+        Export-Csv "$backupDir\installed_apps.csv" -NoTypeInformation -Encoding UTF8
+    Write-Step "OK" "Installed Apps da backup" "OK"
+
+    # System Info
+    Write-Step "INFO" "Backup System Info..."
+    systeminfo 2>&1 | Out-File "$backupDir\systeminfo.txt" -Encoding UTF8
+    Write-Step "OK" "System Info da backup" "OK"
+
+    Write-Host ""
+    Write-Host "  BACKUP HOAN TAT!" -Fore Green
+    Write-Host "  Thu muc: $backupDir" -Fore Cyan
+    Write-Host ""
+    $Script:AuditReport.BackupDir = $backupDir
+}
+
+# ============================================================
+#  PHASE: KHOI PHUC (RESTORE)
+# ============================================================
+function Invoke-SystemRestore {
+    Write-Header "KHOI PHUC HE THONG"
+
+    $backupDirs = Get-ChildItem "$env:TEMP\MS_Backup_*" -Directory -EA SilentlyContinue | Sort-Object Name -Descending
+    if ($backupDirs.Count -eq 0) {
+        Write-Step "WARN" "Khong tim thay backup nao" "WARN"
+        return
+    }
+
+    Write-Host "  Chon backup de khoi phuc:" -Fore Cyan
+    $n = 0
+    foreach ($bd in $backupDirs) {
+        $n++
+        Write-Host "    [$n] $($bd.Name)" -Fore White
+    }
+    Write-Host "    [0] Bo qua" -Fore Red
+    Write-Host ""
+    $ch = Read-Host "  Chon"
+    if ($ch -eq "0" -or $ch -eq "") { return }
+
+    $idx = [int]$ch - 1
+    if ($idx -lt 0 -or $idx -ge $backupDirs.Count) { return }
+    $selectedBackup = $backupDirs[$idx].FullName
+
+    Write-Host "  Backup: $selectedBackup" -Fore Cyan
+    Write-Host ""
+    Write-Host "  Chon muc khoi phuc:" -Fore Cyan
+    Write-Host "    [1] Registry" -Fore White
+    Write-Host "    [2] Hosts" -Fore White
+    Write-Host "    [3] License Info (chi xem)" -Fore White
+    Write-Host "    [4] THUC HIEN TAT CA" -Fore Green
+    Write-Host "    [0] Bo qua" -Fore Red
+    Write-Host ""
+    $ch2 = Read-Host "  Chon"
+    if ($ch2 -eq "0" -or $ch2 -eq "") { return }
+
+    $acts = if ($ch2 -eq "4") { 1..3 } else { $ch2 -split "[,\s]+" | ForEach-Object { [int]$_ } }
+
+    foreach ($act in $acts) {
+        switch ($act) {
+            1 {
+                Write-Step "INFO" "Restore Registry..."
+                $regFiles = Get-ChildItem "$selectedBackup\*.reg" -EA SilentlyContinue
+                foreach ($rf in $regFiles) {
+                    reg import $rf.FullName 2>&1 | Out-Null
+                    Write-Step "OK" "Import: $($rf.Name)" "OK"
+                }
+            }
+            2 {
+                Write-Step "INFO" "Restore Hosts..."
+                if (Test-Path "$selectedBackup\hosts.backup") {
+                    Copy-Item "$selectedBackup\hosts.backup" $Script:HostsPath -Force
+                    Write-Step "OK" "Hosts da khoi phuc" "OK"
+                } else { Write-Step "WARN" "Khong tim thay hosts backup" "WARN" }
+            }
+            3 {
+                Write-Step "INFO" "License Info:"
+                if (Test-Path "$selectedBackup\license_dlv.txt") {
+                    Get-Content "$selectedBackup\license_dlv.txt" | ForEach-Object { Write-Host "  $_" -Fore DarkGray }
+                }
+            }
+        }
+    }
+    Write-Host ""
+    Write-Host "  KHOI PHUC HOAN TAT!" -Fore Green
+    Write-Host ""
+}
+
+# ============================================================
+#  CHON NGON NGU
+# ============================================================
+function Select-Language {
+    Clear-Host
+    $line = [string]::new([char]0x2550, 50)
+    Write-Host ""
+    Write-Host "  $line" -Fore Cyan
+    Write-Host "   SELECT LANGUAGE / CHON NGON NGU" -Fore White
+    Write-Host "  $line" -Fore Cyan
+    Write-Host ""
+    Write-Host "   [1] Tieng Viet" -Fore White
+    Write-Host "   [2] English" -Fore White
+    Write-Host "   [3] 日本語 (Japanese)" -Fore White
+    Write-Host "   [4] 中文 (Chinese)" -Fore White
+    Write-Host "   [5] Deutsch (German)" -Fore White
+    Write-Host "   [6] Français (French)" -Fore White
+    Write-Host ""
+    $ch = Read-Host "  Chon / Select"
+    switch ($ch) {
+        "1" { Set-Language "vi" }
+        "2" { Set-Language "en" }
+        "3" { Set-Language "ja" }
+        "4" { Set-Language "zh" }
+        "5" { Set-Language "de" }
+        "6" { Set-Language "fr" }
+        default { Set-Language "vi" }
+    }
+    Write-Host "  Da chon: $Script:Lang" -Fore Green
+}
+
+# ============================================================
 #  CHUC NANG THEO TUNG SAN PHAM
 # ============================================================
 
@@ -3298,6 +4729,7 @@ function Show-Menu {
         Write-Host "  $line" -Fore Cyan
         Write-Host "   MICROSOFT GENUINE LICENSE AUDIT & RECOVERY TOOL v$Script:Version" -Fore White
         Write-Host "   Pho Tue SoftWare Solutions JSC | HiTechCloud" -Fore DarkGray
+        Write-Host "   Ngon ngu: $Script:Lang" -Fore DarkGray
         Write-Host "  $line" -Fore Cyan
         Write-Host ""
         Write-Host "   --- KIEM TOAN VA PHUC HOI TONG HOP ---" -Fore Yellow
@@ -3314,12 +4746,14 @@ function Show-Menu {
         Write-Host "   [W3] Kiem tra trang thai License" -Fore White
         Write-Host "   [W4] Nhap va kich hoat key moi" -Fore White
         Write-Host "   [W5] Nang cap Home -> Pro" -Fore White
+        Write-Host "   [W6] " -NoNewline; Write-Host "Nang cap Windows (Win10->Win11)" -Fore Green
         Write-Host ""
         Write-Host "   --- OFFICE / PROJECT / VISIO ---" -Fore Yellow
         Write-Host "   [O1] " -NoNewline; Write-Host "Kiem tra + Go KMS Office + Khoi phuc" -Fore Green
         Write-Host "   [O2] Kiem tra + Go KMS Project" -Fore White
         Write-Host "   [O3] Kiem tra + Go KMS Visio" -Fore White
         Write-Host "   [O4] Kiem tra Microsoft 365 / Click-to-Run" -Fore White
+        Write-Host "   [O5] " -NoNewline; Write-Host "Nang cap Office" -Fore Green
         Write-Host ""
         Write-Host "   --- PHAN MEM KHAC ---" -Fore Yellow
         Write-Host "   [S1] Kiem tra Visual Studio" -Fore White
@@ -3334,7 +4768,20 @@ function Show-Menu {
         Write-Host "   [D6] Sua loi he thong (DISM + SFC)" -Fore White
         Write-Host "   [D7] Lam sach toan bo (khong kiem tra)" -Fore White
         Write-Host ""
-        Write-Host "   [0] Thoat" -Fore Red
+        Write-Host "   --- PHASE MOI ---" -Fore Yellow
+        Write-Host "   [P1] " -NoNewline; Write-Host "Audit doc lap (chi doc, khong thay doi)" -Fore Green
+        Write-Host "   [P2] " -NoNewline; Write-Host "Kiem tra tieu chuan doanh nghiep (Compliance)" -Fore Green
+        Write-Host "   [P3] " -NoNewline; Write-Host "Phuc hoi License (Recovery)" -Fore Green
+        Write-Host "   [P4] " -NoNewline; Write-Host "Trien khai License (Batch Deploy)" -Fore Green
+        Write-Host "   [P5] " -NoNewline; Write-Host "Trung tam san pham Microsoft" -Fore Green
+        Write-Host "   [P6] " -NoNewline; Write-Host "Kiem tra bao mat (Security Scan)" -Fore Green
+        Write-Host "   [P7] " -NoNewline; Write-Host "Kiem tra suc khoe mo rong (Health)" -Fore Green
+        Write-Host "   [P8] " -NoNewline; Write-Host "Don dep he thong (Cleanup)" -Fore Green
+        Write-Host "   [P9] " -NoNewline; Write-Host "Sao luu he thong (Backup)" -Fore Green
+        Write-Host "   [PA] " -NoNewline; Write-Host "Khoi phuc he thong (Restore)" -Fore Green
+        Write-Host ""
+        Write-Host "   [L]  Ngon ngu / Language" -Fore Cyan
+        Write-Host "   [0]  Thoat / Exit" -Fore Red
         Write-Host ""
         Write-Host "  $line" -Fore Cyan
         Write-Host ""
@@ -3359,6 +4806,8 @@ function Show-Menu {
             "w4" { Activate-NewLicense }
             "W5" { Upgrade-HomeToPro }
             "w5" { Upgrade-HomeToPro }
+            "W6" { Invoke-WindowsUpgrade }
+            "w6" { Invoke-WindowsUpgrade }
             # Office / Project / Visio
             "O1" { Repair-OfficeLicense }
             "o1" { Repair-OfficeLicense }
@@ -3368,6 +4817,8 @@ function Show-Menu {
             "o3" { Repair-VisioLicense }
             "O4" { Show-M365Info }
             "o4" { Show-M365Info }
+            "O5" { Invoke-OfficeUpgrade }
+            "o5" { Invoke-OfficeUpgrade }
             # Phan mem khac
             "S1" { Show-VisualStudioInfo }
             "s1" { Show-VisualStudioInfo }
@@ -3388,6 +4839,30 @@ function Show-Menu {
             "d6" { Fix-SystemErrors }
             "D7" { Invoke-FullCleanup }
             "d7" { Invoke-FullCleanup }
+            # Phase moi
+            "P1" { Invoke-ReadOnlyAudit }
+            "p1" { Invoke-ReadOnlyAudit }
+            "P2" { Invoke-ComplianceCheck }
+            "p2" { Invoke-ComplianceCheck }
+            "P3" { Invoke-LicenseRecovery }
+            "p3" { Invoke-LicenseRecovery }
+            "P4" { Invoke-LicenseDeployment }
+            "p4" { Invoke-LicenseDeployment }
+            "P5" { Invoke-ProductCenter }
+            "p5" { Invoke-ProductCenter }
+            "P6" { Invoke-SecurityScan }
+            "p6" { Invoke-SecurityScan }
+            "P7" { Invoke-HealthCheckExtended }
+            "p7" { Invoke-HealthCheckExtended }
+            "P8" { Invoke-SystemCleanup }
+            "p8" { Invoke-SystemCleanup }
+            "P9" { Invoke-SystemBackup }
+            "p9" { Invoke-SystemBackup }
+            "PA" { Invoke-SystemRestore }
+            "pa" { Invoke-SystemRestore }
+            # Ngon ngu
+            "L"  { Select-Language }
+            "l"  { Select-Language }
             # Thoat
             "0"  { $cont = $false }
             default {
@@ -3420,4 +4895,8 @@ Write-Host "  Dang tai Microsoft Genuine License Audit & Recovery Tool v$Script:
 Write-Host "  Pho Tue SoftWare Solutions JSC | HiTechCloud" -Fore DarkGray
 Write-Host "  Ngay: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -Fore DarkGray
 Write-Host ""
+
+# Chon ngon ngu
+Select-Language
+
 Show-Menu
