@@ -7013,126 +7013,259 @@ function Show-M365Info {
 #  MENU CHINH
 # ============================================================
 function Show-Menu {
+    # ── Helper: Write 2-column menu item ──
+    function Write-MenuItem {
+        param([string]$Key1, [string]$Text1, [string]$Key2, [string]$Text2, [string]$Color1="White", [string]$Color2="White")
+        $k1 = $Key1.PadRight(6)
+        $k2 = $Key2.PadRight(6)
+        Write-Host "   " -NoNewline
+        Write-Host "$k1" -Fore Cyan -NoNewline
+        Write-Host $Text1.PadRight(42) -Fore $Color1 -NoNewline
+        if ($Key2) {
+            Write-Host "$k2" -Fore Cyan -NoNewline
+            Write-Host $Text2 -Fore $Color2
+        } else { Write-Host "" }
+    }
+    function Write-MenuHeader {
+        param([string]$Title)
+        Write-Host ""
+        Write-Host "   $([string]::new([char]0x2500, 2)) " -Fore DarkGray -NoNewline
+        Write-Host $Title -Fore Yellow -NoNewline
+        Write-Host " $([string]::new([char]0x2500, 60 - $Title.Length))" -Fore DarkGray
+    }
+    function Write-MenuSep {
+        Write-Host "   $([string]::new([char]0x2500, 98))" -Fore DarkGray
+    }
+
     $cont = $true
     while ($cont) {
         Clear-Host
-        $line = [string]::new([char]0x2550, 67)
+        $W = 98
+        $topBot = [string]::new([char]0x2550, $W)
+        $midLine = [string]::new([char]0x2500, $W)
+
+        # ── Header ──
         Write-Host ""
-        Write-Host "  $line" -Fore Cyan
-        Write-Host "   MICROSOFT GENUINE LICENSE AUDIT & RECOVERY TOOL v$Script:Version" -Fore White
-        Write-Host "   Pho Tue SoftWare Solutions JSC | HiTechCloud" -Fore DarkGray
-        Write-Host "   Ngon ngu: $Script:Lang" -Fore DarkGray
-        Write-Host "  $line" -Fore Cyan
+        Write-Host "  ╔$topBot╗" -Fore Cyan
+        Write-Host "  ║" -Fore Cyan -NoNewline
+        Write-Host "  MICROSOFT LICENSE & SYSTEM RECOVERY TOOLKIT v$Script:Version  " -Fore White -NoNewline
+        Write-Host "".PadLeft($W - 58 - $Script:Version.Length) -NoNewline
+        Write-Host "║" -Fore Cyan
+        Write-Host "  ║" -Fore Cyan -NoNewline
+        Write-Host "  Pho Tue SoftWare Solutions JSC | HiTechCloud | photuesoftware.com" -Fore DarkGray -NoNewline
+        Write-Host "".PadLeft($W - 68) -NoNewline
+        Write-Host "║" -Fore Cyan
+        Write-Host "  ╚$topBot╝" -Fore Cyan
         Write-Host ""
-        Write-Host "   --- KIEM TOAN VA PHUC HOI TONG HOP ---" -Fore Yellow
-        Write-Host "   [1] " -NoNewline; Write-Host "Kiem toan toan dien (Audit + Cleanup + Activate + Report)" -Fore Green
-        Write-Host "   [2] Chi kiem tra thong tin he thong" -Fore White
-        Write-Host "   [3] Chi phat hien van de ban quyen" -Fore White
-        Write-Host "   [4] Chi lam sach he thong (can xac nhan)" -Fore White
-        Write-Host "   [5] Chi kiem tra suc khoe he thong" -Fore White
-        Write-Host "   [6] Xuat bao cao (HTML/JSON/TXT/CSV)" -Fore White
+
+        # ── Quick Actions ──
+        Write-MenuHeader "QUICK ACTIONS"
+        Write-MenuItem "1" "Full Audit + Repair + Report"    "2" "System Information Only"
+        Write-MenuItem "3" "License Issues Detection"        "4" "System Cleanup (confirm)"
+        Write-MenuItem "5" "System Health Check"             "6" "Export Report (HTML/JSON)"
         Write-Host ""
-        Write-Host "   --- WINDOWS ---" -Fore Yellow
-        Write-Host "   [W1] " -NoNewline; Write-Host "Kiem tra + Go KMS Windows + Khoi phuc" -Fore Green
-        Write-Host "   [W2] Kiem tra phien ban Windows" -Fore White
-        Write-Host "   [W3] Kiem tra trang thai License" -Fore White
-        Write-Host "   [W4] Nhap va kich hoat key moi" -Fore White
-        Write-Host "   [W5] Nang cap Home -> Pro" -Fore White
-        Write-Host "   [W6] " -NoNewline; Write-Host "Nang cap Windows (Win10->Win11)" -Fore Green
+
+        # ── Two-column layout for main sections ──
+        # LEFT COLUMN: Windows & Office
+        Write-Host "   ┌──────────────────────────────────────┐" -Fore DarkGray -NoNewline
+        Write-Host "  ┌──────────────────────────────────────┐" -Fore DarkGray
+        Write-Host "   │" -Fore DarkGray -NoNewline; Write-Host " WINDOWS                              " -Fore Yellow -NoNewline; Write-Host "│" -Fore DarkGray -NoNewline
+        Write-Host "  │" -Fore DarkGray -NoNewline; Write-Host " OFFICE / PROJECT / VISIO             " -Fore Yellow -NoNewline; Write-Host "│" -Fore DarkGray
+        Write-Host "   ├──────────────────────────────────────┤" -Fore DarkGray -NoNewline
+        Write-Host "  ├──────────────────────────────────────┤" -Fore DarkGray
+
+        $leftItems = @(
+            @("W1","Remove KMS + Restore",      "Green"),
+            @("W2","Check Edition",              "White"),
+            @("W3","License Status",             "White"),
+            @("W4","Install New Key",            "White"),
+            @("W5","Home → Pro Upgrade",         "White"),
+            @("W6","Win10 → Win11 Upgrade",      "Green")
+        )
+        $rightItems = @(
+            @("O1","Remove KMS + Restore Office","Green"),
+            @("O2","Remove KMS Project",         "White"),
+            @("O3","Remove KMS Visio",           "White"),
+            @("O4","Microsoft 365 / C2R Info",   "White"),
+            @("O5","Office Upgrade",             "Green"),
+            @("","","White")
+        )
+        for ($i = 0; $i -lt 6; $i++) {
+            $l = $leftItems[$i]; $r = $rightItems[$i]
+            Write-Host "   │ " -Fore DarkGray -NoNewline
+            Write-Host "$($l[0])" -Fore Cyan -NoNewline
+            Write-Host " $($l[1])".PadRight(34) -Fore $l[2] -NoNewline
+            Write-Host "│" -Fore DarkGray -NoNewline
+            Write-Host "  │ " -Fore DarkGray -NoNewline
+            if ($r[0]) {
+                Write-Host "$($r[0])" -Fore Cyan -NoNewline
+                Write-Host " $($r[1])".PadRight(34) -Fore $r[2] -NoNewline
+            } else { Write-Host "".PadRight(36) -NoNewline }
+            Write-Host "│" -Fore DarkGray
+        }
+        Write-Host "   └──────────────────────────────────────┘" -Fore DarkGray -NoNewline
+        Write-Host "  └──────────────────────────────────────┘" -Fore DarkGray
+
         Write-Host ""
-        Write-Host "   --- OFFICE / PROJECT / VISIO ---" -Fore Yellow
-        Write-Host "   [O1] " -NoNewline; Write-Host "Kiem tra + Go KMS Office + Khoi phuc" -Fore Green
-        Write-Host "   [O2] Kiem tra + Go KMS Project" -Fore White
-        Write-Host "   [O3] Kiem tra + Go KMS Visio" -Fore White
-        Write-Host "   [O4] Kiem tra Microsoft 365 / Click-to-Run" -Fore White
-        Write-Host "   [O5] " -NoNewline; Write-Host "Nang cap Office" -Fore Green
+
+        # ── Security & System ──
+        Write-Host "   ┌──────────────────────────────────────┐" -Fore DarkGray -NoNewline
+        Write-Host "  ┌──────────────────────────────────────┐" -Fore DarkGray
+        Write-Host "   │" -Fore DarkGray -NoNewline; Write-Host " SECURITY & SYSTEM                    " -Fore Yellow -NoNewline; Write-Host "│" -Fore DarkGray -NoNewline
+        Write-Host "  │" -Fore DarkGray -NoNewline; Write-Host " MICROSOFT PRODUCTS                   " -Fore Yellow -NoNewline; Write-Host "│" -Fore DarkGray
+        Write-Host "   ├──────────────────────────────────────┤" -Fore DarkGray -NoNewline
+        Write-Host "  ├──────────────────────────────────────┤" -Fore DarkGray
+
+        $leftItems2 = @(
+            @("D1","Defender Repair",            "Green"),
+            @("D2","Hosts File Restore",         "White"),
+            @("D3","Remove KMS Tasks",           "White"),
+            @("D4","Remove KMS Services",        "White"),
+            @("D5","Remove KMS Startup",         "White"),
+            @("D6","DISM + SFC Repair",          "White"),
+            @("D7","Full Cleanup",               "White")
+        )
+        $rightItems2 = @(
+            @("M1","Product Discovery",          "Green"),
+            @("M2","Runtime Audit",              "White"),
+            @("M3","Services Audit",             "White"),
+            @("M4","Store Audit",                "White"),
+            @("M5","Account Audit",              "White"),
+            @("M6","Update Audit",               "White"),
+            @("M7","Security Audit (17 checks)", "Green")
+        )
+        for ($i = 0; $i -lt 7; $i++) {
+            $l = $leftItems2[$i]; $r = $rightItems2[$i]
+            Write-Host "   │ " -Fore DarkGray -NoNewline
+            Write-Host "$($l[0])" -Fore Cyan -NoNewline
+            Write-Host " $($l[1])".PadRight(34) -Fore $l[2] -NoNewline
+            Write-Host "│" -Fore DarkGray -NoNewline
+            Write-Host "  │ " -Fore DarkGray -NoNewline
+            Write-Host "$($r[0])" -Fore Cyan -NoNewline
+            Write-Host " $($r[1])".PadRight(34) -Fore $r[2] -NoNewline
+            Write-Host "│" -Fore DarkGray
+        }
+        Write-Host "   └──────────────────────────────────────┘" -Fore DarkGray -NoNewline
+        Write-Host "  └──────────────────────────────────────┘" -Fore DarkGray
+
         Write-Host ""
-        Write-Host "   --- PHAN MEM KHAC ---" -Fore Yellow
-        Write-Host "   [S1] Kiem tra Visual Studio" -Fore White
-        Write-Host "   [S2] Kiem tra SQL Server" -Fore White
+
+        # ── Deep Audit & Server ──
+        Write-Host "   ┌──────────────────────────────────────┐" -Fore DarkGray -NoNewline
+        Write-Host "  ┌──────────────────────────────────────┐" -Fore DarkGray
+        Write-Host "   │" -Fore DarkGray -NoNewline; Write-Host " DEEP AUDIT                          " -Fore Yellow -NoNewline; Write-Host "│" -Fore DarkGray -NoNewline
+        Write-Host "  │" -Fore DarkGray -NoNewline; Write-Host " WINDOWS SERVER & HOSTING             " -Fore Yellow -NoNewline; Write-Host "│" -Fore DarkGray
+        Write-Host "   ├──────────────────────────────────────┤" -Fore DarkGray -NoNewline
+        Write-Host "  ├──────────────────────────────────────┤" -Fore DarkGray
+
+        $leftItems3 = @(
+            @("M8","Optional Features",          "White"),
+            @("M9","Drivers Audit",              "White"),
+            @("MA","Licensing Components",       "White"),
+            @("MB","Certificates Audit",         "White"),
+            @("MC","Scheduled Tasks Audit",      "White"),
+            @("MD","Registry Audit",             "White"),
+            @("ME","Environment Info",           "White")
+        )
+        $rightItems3 = @(
+            @("SV1","Server Inventory",          "Green"),
+            @("SV2","Server Licensing",          "White"),
+            @("SV3","Server Roles",              "White"),
+            @("SV4","Server Features",           "White"),
+            @("SV5","IIS Manager",               "White"),
+            @("SV6","Hyper-V Audit",             "White"),
+            @("SV7","RDS / DNS / DHCP / AD",     "White")
+        )
+        for ($i = 0; $i -lt 7; $i++) {
+            $l = $leftItems3[$i]; $r = $rightItems3[$i]
+            Write-Host "   │ " -Fore DarkGray -NoNewline
+            Write-Host "$($l[0])" -Fore Cyan -NoNewline
+            Write-Host " $($l[1])".PadRight(34) -Fore $l[2] -NoNewline
+            Write-Host "│" -Fore DarkGray -NoNewline
+            Write-Host "  │ " -Fore DarkGray -NoNewline
+            Write-Host "$($r[0])" -Fore Cyan -NoNewline
+            Write-Host " $($r[1])".PadRight(34) -Fore $r[2] -NoNewline
+            Write-Host "│" -Fore DarkGray
+        }
+        Write-Host "   └──────────────────────────────────────┘" -Fore DarkGray -NoNewline
+        Write-Host "  └──────────────────────────────────────┘" -Fore DarkGray
+
         Write-Host ""
-        Write-Host "   --- HE THONG ---" -Fore Yellow
-        Write-Host "   [D1] " -NoNewline; Write-Host "Kiem tra + Khoi phuc Defender" -Fore Green
-        Write-Host "   [D2] Kiem tra + Khoi phuc file Hosts" -Fore White
-        Write-Host "   [D3] Kiem tra + Xoa Scheduled Tasks KMS" -Fore White
-        Write-Host "   [D4] Kiem tra + Xoa Services KMS" -Fore White
-        Write-Host "   [D5] Kiem tra + Xoa Startup KMS" -Fore White
-        Write-Host "   [D6] Sua loi he thong (DISM + SFC)" -Fore White
-        Write-Host "   [D7] Lam sach toan bo (khong kiem tra)" -Fore White
+
+        # ── Repair & Optimization ──
+        Write-Host "   ┌──────────────────────────────────────┐" -Fore DarkGray -NoNewline
+        Write-Host "  ┌──────────────────────────────────────┐" -Fore DarkGray
+        Write-Host "   │" -Fore DarkGray -NoNewline; Write-Host " REPAIR & RECOVERY                    " -Fore Yellow -NoNewline; Write-Host "│" -Fore DarkGray -NoNewline
+        Write-Host "  │" -Fore DarkGray -NoNewline; Write-Host " OPTIMIZATION & HOSTING               " -Fore Yellow -NoNewline; Write-Host "│" -Fore DarkGray
+        Write-Host "   ├──────────────────────────────────────┤" -Fore DarkGray -NoNewline
+        Write-Host "  ├──────────────────────────────────────┤" -Fore DarkGray
+
+        $leftItems4 = @(
+            @("MF","Repair Center (8 targets)",   "Green"),
+            @("MG","Download Center",             "White"),
+            @("MH","Health Check Full",           "White"),
+            @("MI","Troubleshooter",              "White"),
+            @("MJ","Log Collector",               "White"),
+            @("MK","Report Generator",            "White"),
+            @("ML","Quick Actions (1-touch)",     "Green")
+        )
+        $rightItems4 = @(
+            @("SV8","Storage & Network",          "White"),
+            @("SV9","Server Performance",         "White"),
+            @("SVA","Server Health & Compliance", "Green"),
+            @("H1","VPS Audit",                   "White"),
+            @("H2","SQL Audit",                   "White"),
+            @("H3","Hosting Security",            "White"),
+            @("H4","Web Hosting (IIS)",           "White")
+        )
+        for ($i = 0; $i -lt 7; $i++) {
+            $l = $leftItems4[$i]; $r = $rightItems4[$i]
+            Write-Host "   │ " -Fore DarkGray -NoNewline
+            Write-Host "$($l[0])" -Fore Cyan -NoNewline
+            Write-Host " $($l[1])".PadRight(34) -Fore $l[2] -NoNewline
+            Write-Host "│" -Fore DarkGray -NoNewline
+            Write-Host "  │ " -Fore DarkGray -NoNewline
+            Write-Host "$($r[0])" -Fore Cyan -NoNewline
+            Write-Host " $($r[1])".PadRight(34) -Fore $r[2] -NoNewline
+            Write-Host "│" -Fore DarkGray
+        }
+        Write-Host "   └──────────────────────────────────────┘" -Fore DarkGray -NoNewline
+        Write-Host "  └──────────────────────────────────────┘" -Fore DarkGray
+
         Write-Host ""
-        Write-Host "   --- PHASE MOI ---" -Fore Yellow
-        Write-Host "   [P1] " -NoNewline; Write-Host "Audit doc lap (chi doc, khong thay doi)" -Fore Green
-        Write-Host "   [P2] " -NoNewline; Write-Host "Kiem tra tieu chuan doanh nghiep (Compliance)" -Fore Green
-        Write-Host "   [P3] " -NoNewline; Write-Host "Phuc hoi License (Recovery)" -Fore Green
-        Write-Host "   [P4] " -NoNewline; Write-Host "Trien khai License (Batch Deploy)" -Fore Green
-        Write-Host "   [P5] " -NoNewline; Write-Host "Trung tam san pham Microsoft" -Fore Green
-        Write-Host "   [P6] " -NoNewline; Write-Host "Kiem tra bao mat (Security Scan)" -Fore Green
-        Write-Host "   [P7] " -NoNewline; Write-Host "Kiem tra suc khoe mo rong (Health)" -Fore Green
-        Write-Host "   [P8] " -NoNewline; Write-Host "Don dep he thong (Cleanup)" -Fore Green
-        Write-Host "   [P9] " -NoNewline; Write-Host "Sao luu he thong (Backup)" -Fore Green
-        Write-Host "   [PA] " -NoNewline; Write-Host "Khoi phuc he thong (Restore)" -Fore Green
+
+        # ── Advanced (single row) ──
+        Write-MenuHeader "ADVANCED"
+        Write-MenuItem "P1" "Read-Only Audit"                 "P2" "Enterprise Compliance Check"
+        Write-MenuItem "P3" "License Recovery"                "P4" "Batch License Deployment"
+        Write-MenuItem "P5" "Microsoft Product Center"        "P6" "Security Scan"
+        Write-MenuItem "P7" "Health Check Extended"           "P8" "System Cleanup"
+        Write-MenuItem "P9" "System Backup"                   "PA" "System Restore"
         Write-Host ""
-        Write-Host "   --- AUDIT MOI (21-41) ---" -Fore Yellow
-        Write-Host "   [M1] " -NoNewline; Write-Host "Product Discovery (phat hien tat ca)" -Fore Green
-        Write-Host "   [M2] " -NoNewline; Write-Host "Runtime Audit (.NET, VC++, DirectX...)" -Fore Green
-        Write-Host "   [M3] " -NoNewline; Write-Host "Services Audit (SPP, WU, Defender...)" -Fore Green
-        Write-Host "   [M4] " -NoNewline; Write-Host "Store Audit (MS Store, WinGet)" -Fore Green
-        Write-Host "   [M5] " -NoNewline; Write-Host "Account Audit (MS/Azure AD/Domain)" -Fore Green
-        Write-Host "   [M6] " -NoNewline; Write-Host "Update Audit (Windows/Office/Driver)" -Fore Green
-        Write-Host "   [M7] " -NoNewline; Write-Host "Security Audit Full (17 checks)" -Fore Green
-        Write-Host "   [M8] " -NoNewline; Write-Host "Optional Features (Hyper-V, WSL, IIS...)" -Fore Green
-        Write-Host "   [M9] " -NoNewline; Write-Host "Drivers Audit" -Fore Green
-        Write-Host "   [MA] " -NoNewline; Write-Host "Licensing Components Audit" -Fore Green
-        Write-Host "   [MB] " -NoNewline; Write-Host "Certificates Audit" -Fore Green
-        Write-Host "   [MC] " -NoNewline; Write-Host "Scheduled Tasks Audit" -Fore Green
-        Write-Host "   [MD] " -NoNewline; Write-Host "Registry Audit" -Fore Green
-        Write-Host "   [ME] " -NoNewline; Write-Host "Environment Audit" -Fore Green
-        Write-Host "   [MF] " -NoNewline; Write-Host "Repair Center (8 doi tuong)" -Fore Green
-        Write-Host "   [MG] " -NoNewline; Write-Host "Download Center" -Fore Green
-        Write-Host "   [MH] " -NoNewline; Write-Host "Health Check Full" -Fore Green
-        Write-Host "   [MI] " -NoNewline; Write-Host "Troubleshooter" -Fore Green
-        Write-Host "   [MJ] " -NoNewline; Write-Host "Log Collector" -Fore Green
-        Write-Host "   [MK] " -NoNewline; Write-Host "Report Generator" -Fore Green
-        Write-Host "   [ML] " -NoNewline; Write-Host "Quick Actions (1-touch)" -Fore Green
+
+        Write-MenuHeader "OPTIMIZATION & UPGRADE"
+        Write-MenuItem "X1" "Optimization Center"            "X2" "Windows Installation Audit"
+        Write-MenuItem "X3" "Component Store Audit"           "X4" "Feature Audit"
+        Write-MenuItem "X5" "Store Apps Audit"                "X6" "Edge / OneDrive / Teams"
+        Write-MenuItem "X7" "Office Details Audit"            "X8" "VS / SQL Components"
+        Write-MenuItem "X9" "WSL / Sandbox / Containers"     "XA" "Compliance Report (Score)"
         Write-Host ""
-        Write-Host "   --- WINDOWS SERVER ---" -Fore Yellow
-        Write-Host "   [SV1] " -NoNewline; Write-Host "Server Inventory" -Fore Green
-        Write-Host "   [SV2] " -NoNewline; Write-Host "Server Licensing" -Fore Green
-        Write-Host "   [SV3] " -NoNewline; Write-Host "Server Roles" -Fore Green
-        Write-Host "   [SV4] " -NoNewline; Write-Host "Server Features" -Fore Green
-        Write-Host "   [SV5] " -NoNewline; Write-Host "IIS Manager" -Fore Green
-        Write-Host "   [SV6] " -NoNewline; Write-Host "Hyper-V Audit" -Fore Green
-        Write-Host "   [SV7] " -NoNewline; Write-Host "RDS / DNS / DHCP / AD" -Fore Green
-        Write-Host "   [SV8] " -NoNewline; Write-Host "Server Storage & Network" -Fore Green
-        Write-Host "   [SV9] " -NoNewline; Write-Host "Server Performance" -Fore Green
-        Write-Host "   [SVA] " -NoNewline; Write-Host "Server Health & Compliance" -Fore Green
+
+        Write-MenuHeader "HOSTING PROVIDER"
+        Write-MenuItem "H5" "Backup Audit (VSS)"             "H6" "Migration & Readiness"
         Write-Host ""
-        Write-Host "   --- HOSTING PROVIDER ---" -Fore Yellow
-        Write-Host "   [H1] " -NoNewline; Write-Host "VPS Audit" -Fore Green
-        Write-Host "   [H2] " -NoNewline; Write-Host "Hosting SQL Audit" -Fore Green
-        Write-Host "   [H3] " -NoNewline; Write-Host "Hosting Security (TLS/SMB/NLA)" -Fore Green
-        Write-Host "   [H4] " -NoNewline; Write-Host "Web Hosting (IIS)" -Fore Green
-        Write-Host "   [H5] " -NoNewline; Write-Host "Backup Audit (VSS)" -Fore Green
-        Write-Host "   [H6] " -NoNewline; Write-Host "Migration & Readiness" -Fore Green
+
+        # ── Footer ──
+        Write-MenuSep
+        Write-Host "   " -NoNewline
+        Write-Host "[L]" -Fore Cyan -NoNewline
+        Write-Host " Language / Ngon ngu" -Fore White -NoNewline
+        Write-Host "          " -NoNewline
+        Write-Host "[0]" -Fore Red -NoNewline
+        Write-Host " Thoat / Exit" -Fore Red
+        Write-MenuSep
         Write-Host ""
-        Write-Host "   --- OPTIMIZATION ---" -Fore Yellow
-        Write-Host "   [X1] " -NoNewline; Write-Host "Optimization Center (Apps/Privacy/Perf)" -Fore Green
-        Write-Host "   [X2] " -NoNewline; Write-Host "Windows Installation Audit" -Fore Green
-        Write-Host "   [X3] " -NoNewline; Write-Host "Component Store Audit" -Fore Green
-        Write-Host "   [X4] " -NoNewline; Write-Host "Feature Audit" -Fore Green
-        Write-Host "   [X5] " -NoNewline; Write-Host "Store Apps Audit" -Fore Green
-        Write-Host "   [X6] " -NoNewline; Write-Host "Edge / OneDrive / Teams / Outlook" -Fore Green
-        Write-Host "   [X7] " -NoNewline; Write-Host "Office Details (Apps/Channel/Lang)" -Fore Green
-        Write-Host "   [X8] " -NoNewline; Write-Host "VS / SQL Components" -Fore Green
-        Write-Host "   [X9] " -NoNewline; Write-Host "WSL / Sandbox / Containers" -Fore Green
-        Write-Host "   [XA] " -NoNewline; Write-Host "Final Compliance Report (Score)" -Fore Green
-        Write-Host ""
-        Write-Host "   [L]  Ngon ngu / Language" -Fore Cyan
-        Write-Host "   [0]  Thoat / Exit" -Fore Red
-        Write-Host ""
-        Write-Host "  $line" -Fore Cyan
-        Write-Host ""
-        $ch = Read-Host "  Chon chuc nang"
+        $ch = Read-Host "  >> Nhap lua chon"
 
         switch ($ch) {
             # Kiem toan tong hop
