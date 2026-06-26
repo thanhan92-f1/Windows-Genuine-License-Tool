@@ -263,8 +263,8 @@
     <div class="tabs">
         <div class="tab active" onclick="switchTab('auto')">⚡ Tự động</div>
         <div class="tab" onclick="switchTab('manual')">🔧 Thủ công</div>
-        <div class="tab" onclick="switchTab('check')">🔍 Kiểm tra</div>
         <div class="tab" onclick="switchTab('upgrade')">⬆️ Nâng cấp Pro</div>
+        <div class="tab" onclick="switchTab('check')">🔍 Kiểm tra</div>
     </div>
 
     <!-- TAB: TU DONG -->
@@ -374,6 +374,99 @@ slmgr.vbs /ato</div>
         </ol>
     </div>
 
+    <!-- TAB: NANG CAP PRO -->
+    <div id="tab-upgrade" class="tab-content">
+        <h2>⬆️ Nâng cấp Windows Home → Pro</h2>
+        <p>Nâng cấp trực tiếp từ Windows 11 Home lên Pro <strong>không cần cài lại</strong>. Dữ liệu, ứng dụng và cài đặt được giữ nguyên.</p>
+
+        <h3>Cách 1: Đã có key Windows 11 Pro</h3>
+        <ol class="steps">
+            <li>
+                <h3>Mở CMD quyền Admin</h3>
+                <p>Nhấn <code>Windows + X</code> → chọn <strong>Terminal (Admin)</strong></p>
+            </li>
+            <li>
+                <h3>Kiểm tra phiên bản hiện tại</h3>
+                <div class="cmd-block">DISM /Online /Get-CurrentEdition</div>
+                <div class="info"><strong>Kết quả:</strong> Nếu thấy <code>CoreSingleLanguage</code> hoặc <code>Core</code> → máy đang dùng Windows Home.</div>
+            </li>
+            <li>
+                <h3>Nhập key Pro</h3>
+                <div class="cmd-block"><span class="comment"># Dùng slmgr (cách thường):</span>
+slmgr.vbs /ipk <span class="string">XXXXX-XXXXX-XXXXX-XXXXX-XXXXX</span>
+slmgr.vbs /ato
+
+<span class="comment"># Nếu slmgr bị lỗi 0xC004F069, dùng DISM:</span>
+DISM /Online /Set-Edition:Professional /ProductKey:<span class="string">XXXXX-XXXXX-XXXXX-XXXXX-XXXXX</span> /AcceptEula</div>
+            </li>
+            <li>
+                <h3>Khởi động lại</h3>
+                <p>Windows sẽ nâng cấp lên Pro và yêu cầu khởi động lại.</p>
+            </li>
+        </ol>
+
+        <h3>Cách 2: Chưa có key Pro</h3>
+        <ol class="steps">
+            <li>
+                <h3>Mua key bản quyền</h3>
+                <p>Vào <strong>Settings → System → Activation → Open Store</strong> để mua trên Microsoft Store.</p>
+            </li>
+            <li>
+                <h3>Hoặc mua key Retail từ đối tác</h3>
+                <p>Sau khi có key, nhập bằng cách 1 ở trên.</p>
+            </li>
+        </ol>
+
+        <h3>Cách 3: Dùng Generic Key (chuyển edition, không kích hoạt)</h3>
+        <div class="note">
+            <strong>⚠️ Lưu ý:</strong> Generic key chỉ dùng để <strong>chuyển phiên bản</strong>, không cấp bản quyền.
+            Sau khi chuyển sang Pro, cần nhập <strong>key thật</strong> để kích hoạt.
+        </div>
+        <ol class="steps">
+            <li>
+                <h3>Nhập generic key Windows Pro</h3>
+                <div class="cmd-block">slmgr.vbs /ipk <span class="string">VK7JG-NPHTM-C97JM-9MPGT-3V66T</span></div>
+            </li>
+            <li>
+                <h3>Khởi động lại</h3>
+                <p>Windows sẽ chuyển từ Home sang Pro.</p>
+            </li>
+            <li>
+                <h3>Nhập key thật để kích hoạt</h3>
+                <div class="cmd-block">slmgr.vbs /ipk <span class="string">KEY-THAT-CUA-BAN</span>
+slmgr.vbs /ato</div>
+            </li>
+        </ol>
+
+        <h3>Sửa lỗi thường gặp</h3>
+        <table>
+            <tr><th>Lỗi</th><th>Nguyên nhân</th><th>Khắc phục</th></tr>
+            <tr><td><code>0xC004F069</code></td><td>Key không đúng phiên bản</td><td>Dùng DISM thay slmgr</td></tr>
+            <tr><td><code>0x8007371B</code></td><td>Component Store hỏng</td><td>Chạy DISM + SFC sửa lỗi</td></tr>
+            <tr><td><code>0xC004F050</code></td><td>Key không hợp lệ</td><td>Kiểm tra lại key</td></tr>
+        </table>
+
+        <h3>Sửa lỗi hệ thống trước khi nâng cấp</h3>
+        <div class="cmd-block"><span class="comment"># Bước 1: Sửa component store</span>
+DISM /Online /Cleanup-Image /RestoreHealth
+
+<span class="comment"># Bước 2: Kiểm tra file hệ thống</span>
+sfc /scannow
+
+<span class="comment"># Bước 3: Xóa cache Windows Update</span>
+net stop wuauserv
+net stop bits
+ren C:\Windows\SoftwareDistribution SoftwareDistribution.old
+net start wuauserv
+
+<span class="comment"># Bước 4: Khởi động lại rồi thử nâng cấp lại</span></div>
+
+        <h3>Kiểm tra OEM Key trong BIOS</h3>
+        <div class="cmd-block"><span class="comment"># Xem key OEM được nhúng trong BIOS/UEFI:</span>
+(Get-CimInstance -ClassName SoftwareLicensingService).OA3xOriginalProductKey</div>
+        <div class="info"><strong>Lưu ý:</strong> Nếu có OEM Key, Windows sẽ tự kích hoạt khi cài lại đúng phiên bản.</div>
+    </div>
+
     <!-- TAB: KIEM TRA -->
     <div id="tab-check" class="tab-content">
         <h2>🔍 Cách kiểm tra trạng thái License</h2>
@@ -423,74 +516,6 @@ dir "<span class="path">C:\Windows\KMS-R@1n</span>" 2>nul
             <tr><td><code>KMS Client</code></td><td>Đang dùng KMS lậu</td><td>❌ Chạy tool gỡ ngay</td></tr>
             <tr><td><code>Volume activation</code></td><td>Volume license không hợp lệ</td><td>❌ Chạy tool gỡ ngay</td></tr>
         </table>
-    </div>
-
-    <!-- TAB: NANG CAP PRO -->
-    <div id="tab-upgrade" class="tab-content">
-        <h2>⬆️ Nâng cấp Windows 11 Home → Pro</h2>
-        <p>Bạn có thể nâng cấp trực tiếp từ Windows 11 Home lên Windows 11 Pro <strong>không cần cài lại Windows</strong>. Dữ liệu, ứng dụng và cài đặt sẽ được giữ nguyên.</p>
-
-        <h3>📋 Kiểm tra phiên bản hiện tại</h3>
-        <p>Chạy lệnh sau trong CMD/PowerShell (quyền Admin):</p>
-        <div class="cmd-block">DISM /Online /Get-CurrentEdition
-DISM /Online /Get-TargetEditions</div>
-
-        <h3>🔧 Cách 1: Nâng cấp bằng key Windows 11 Pro (Khuyến nghị)</h3>
-        <ol class="steps">
-            <li>
-                <h3>Nhập key Pro</h3>
-                <p>Vào <strong>Settings → System → Activation → Change product key</strong></p>
-                <p>Nhập Product Key Windows 11 Pro hợp lệ (25 ký tự) → <strong>Next → Start Upgrade</strong></p>
-                <div class="cmd-block"><span class="comment"># Hoặc dùng CMD:</span>
-slmgr.vbs /ipk <span class="string">XXXXX-XXXXX-XXXXX-XXXXX-XXXXX</span></div>
-            </li>
-            <li>
-                <h3>Khởi động lại</h3>
-                <p>Máy sẽ nâng cấp lên Windows 11 Pro và yêu cầu khởi động lại.</p>
-            </li>
-        </ol>
-
-        <h3>🔧 Cách 2: Dùng generic key chuyển edition (Chưa có key)</h3>
-        <div class="note"><strong>⚠️ Lưu ý:</strong> Generic key chỉ dùng để <strong>chuyển phiên bản</strong>, không cấp bản quyền và không kích hoạt Windows. Bạn cần nhập key Pro thật sau khi nâng cấp.</div>
-        <div class="cmd-block"><span class="comment"># Generic key Windows 11 Pro (chỉ chuyển edition):</span>
-slmgr.vbs /ipk <span class="string">VK7JG-NPHTM-C97JM-9MPGT-3V66T</span>
-
-<span class="comment"># Sau khi chuyển xong, khởi động lại và nhập key thật:</span>
-slmgr.vbs /ipk <span class="string">KEY-BAN-QUYEN-THAT</span>
-slmgr.vbs /ato</div>
-
-        <h3>🔧 Cách 3: Nâng cấp bằng DISM</h3>
-        <div class="cmd-block"><span class="comment"># Nâng cấp trực tiếp qua DISM (mất 15-30 phút):</span>
-DISM /Online /Set-Edition:Professional /ProductKey:<span class="string">XXXXX-XXXXX-XXXXX-XXXXX-XXXXX</span> /AcceptEula</div>
-
-        <h3>🛠️ Xử lý lỗi thường gặp</h3>
-        <table>
-            <tr><th>Mã lỗi</th><th>Nguyên nhân</th><th>Giải pháp</th></tr>
-            <tr><td><code>0xC004F069</code></td><td>Component Store lỗi</td><td>Chạy DISM /RestoreHealth + SFC</td></tr>
-            <tr><td><code>0x8007371B</code></td><td>WinSxS hỏng</td><td>Chạy DISM /RestoreHealth + SFC</td></tr>
-            <tr><td><code>0xC004F050</code></td><td>Key không hợp lệ</td><td>Kiểm tra lại key</td></tr>
-        </table>
-
-        <h3>🔧 Sửa lỗi hệ thống trước khi nâng cấp</h3>
-        <div class="cmd-block"><span class="comment"># Bước 1: Sửa Component Store (mất 5-15 phút):</span>
-DISM /Online /Cleanup-Image /RestoreHealth
-
-<span class="comment"># Bước 2: Kiểm tra tệp hệ thống (mất 5-10 phút):</span>
-sfc /scannow
-
-<span class="comment"># Bước 3: Xóa bộ nhớ đệm Windows Update:</span>
-net stop wuauserv
-net stop bits
-net stop cryptsvc
-ren C:\Windows\SoftwareDistribution SoftwareDistribution.old
-ren C:\Windows\System32\catroot2 catroot2.old
-net start cryptsvc
-net start bits
-net start wuauserv
-
-<span class="comment"># Khởi động lại rồi thử nâng cấp lại.</span></div>
-
-        <div class="danger"><strong>⚠️ Quan trọng:</strong> Nếu máy <strong>đã từng dùng KMS/crack</strong>, hãy chạy tool gỡ crack (menu [1]) <strong>trước khi nâng cấp</strong> để tránh lỗi.</div>
     </div>
 
     <!-- COMMON TOOLS -->

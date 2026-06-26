@@ -396,263 +396,454 @@ function Activate-NewLicense {
     Write-Host "  Nhat ky: $LogFile" -ForegroundColor DarkGray
 }
 
-function Check-EditionInfo {
-    Write-Header "KIEM TRA PHIEN BAN WINDOWS"
+# ============================================================
+#  CHUC NANG NANG CAP HOME -> PRO
+# ============================================================
 
-    Write-Step "SCAN" "Dang kiem tra thong tin he thong..."
+function Check-WindowsEdition {
+    Write-Header "KIEM TRA PHIEN BAN WINDOWS HIEN TAI"
+
+    Write-Step "SCAN" "Dang quet he thong..."
     Write-Host ""
 
-    # Kiem tra phien ban hien tai
-    Write-Host "  Phien ban hien tai:" -ForegroundColor Cyan
-    $edition = DISM /Online /Get-CurrentEdition 2>&1 | Select-String "Current Edition"
-    Write-Host "    $edition" -ForegroundColor White
-    Write-Host ""
-
-    # Kiem tra phien ban co the nang cap
-    Write-Host "  Phien ban co the nang cap:" -ForegroundColor Cyan
-    $targets = DISM /Online /Get-TargetEditions 2>&1 | Select-String "Target Edition"
-    foreach ($t in $targets) {
-        Write-Host "    $t" -ForegroundColor DarkGray
+    # Phien ban hien tai
+    Write-Host "  ── Phien ban hien tai ──────────────────────────────────" -ForegroundColor Cyan
+    & DISM /Online /Get-CurrentEdition 2>&1 | ForEach-Object {
+        if ($_ -match "Current Edition\s*:\s*(.+)") {
+            $edition = $Matches[1].Trim()
+            Write-Host "  Phien ban: " -NoNewline
+            $color = switch -Wildcard ($edition) {
+                "*Professional*" { "Green" }
+                "*Enterprise*"   { "Green" }
+                "*Education*"    { "Green" }
+                "*Core*"         { "Yellow" }
+                default          { "White" }
+            }
+            Write-Host $edition -ForegroundColor $color
+            Write-Log "Phien ban hien tai: $edition"
+        }
     }
     Write-Host ""
 
-    # Kiem tra trang thai license
-    Write-Host "  Trang thai license:" -ForegroundColor Cyan
-    & cscript //NoLogo "$env:SystemRoot\System32\slmgr.vbs" /dli
+    # Cac phien ban co the nang cap
+    Write-Host "  ── Co the nang cap len ─────────────────────────────────" -ForegroundColor Cyan
+    & DISM /Online /Get-TargetEditions 2>&1 | ForEach-Object {
+        if ($_ -match "Target Edition\s*:\s*(.+)") {
+            Write-Host "    -> $($Matches[1].Trim())" -ForegroundColor Green
+        }
+    }
     Write-Host ""
 
-    # Kiem tra key OEM trong BIOS (neu co)
-    Write-Host "  Key OEM trong BIOS (neu co):" -ForegroundColor Cyan
+    # OEM Key trong BIOS
+    Write-Host "  ── OEM Key (BIOS/UEFI) ────────────────────────────────" -ForegroundColor Cyan
     try {
-        $oemKey = (Get-CimInstance -ClassName SoftwareLicensingService).OA3xOriginalProductKey
+        $oemKey = (Get-CimInstance -ClassName SoftwareLicensingService -ErrorAction SilentlyContinue).OA3xOriginalProductKey
         if ($oemKey) {
-            Write-Host "    Key: $oemKey" -ForegroundColor White
+            Write-Host "  OEM Key: $oemKey" -ForegroundColor Green
         } else {
-            Write-Host "    Khong co key OEM trong BIOS" -ForegroundColor DarkGray
+            Write-Host "  Khong tim thay OEM Key trong BIOS/UEFI" -ForegroundColor DarkGray
         }
     } catch {
-        Write-Host "    Khong the truy van key OEM" -ForegroundColor DarkGray
+        Write-Host "  Khong the doc OEM Key" -ForegroundColor DarkGray
     }
     Write-Host ""
 
-    # winver
-    Write-Host "  Thong tin phien ban chi tiet:" -ForegroundColor Cyan
-    try {
-        $ver = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion")
-        Write-Host "    Windows $($ver.DisplayVersion) - Build $($ver.CurrentBuildNumber).$($ver.UBR)" -ForegroundColor White
-    } catch {}
+    # Trang thai kich hoat
+    Write-Host "  ── Trang thai kich hoat ────────────────────────────────" -ForegroundColor Cyan
+    & cscript //NoLogo "$env:SystemRoot\System32\slmgr.vbs" /xpr 2>&1 | ForEach-Object {
+        if ($_ -match ".+") { Write-Host "  $_" }
+    }
+    Write-Host ""
+
+    # Key channel
+    Write-Host "  ── Thong tin Key ───────────────────────────────────────" -ForegroundColor Cyan
+    & cscript //NoLogo "$env:SystemRoot\System32\slmgr.vbs" /dli 2>&1 | ForEach-Object {
+        if ($_ -match "Product Key Channel|Partial Product Key|License Status|Description") {
+            Write-Host "  $_"
+        }
+    }
     Write-Host ""
 }
 
-function Repair-SystemForUpgrade {
-    Write-Header "SUA LOI HE THONG DE NANG CAP"
+function Fix-SystemErrors {
+    Write-Header "SUA LOI HE THONG (DISM + SFC)"
 
-    Write-Host "  Quy trinh nay se sua cac loi Component Store" -ForegroundColor Cyan
-    Write-Host "  giup qua trinh nang cap Home -> Pro thanh cong." -ForegroundColor Cyan
+    Write-Host "  Quy trinh nay se:" -ForegroundColor Cyan
+    Write-Host "    1. Sua kho thanh phan he thong (DISM /RestoreHealth)" -ForegroundColor White
+    Write-Host "    2. Kiem tra tinh toan ven file he thong (sfc /scannow)" -ForegroundColor White
+    Write-Host "    3. Xoa bo nho dem Windows Update" -ForegroundColor White
     Write-Host ""
+    Write-Host "  [!] Co the mat 10-30 phut. Vui long khong tat may." -ForegroundColor Yellow
+    Write-Host ""
+
+    $confirm = Read-Host "  Bat dau sua loi? (Y/N)"
+    if ($confirm -ne 'Y' -and $confirm -ne 'y') { return }
 
     # Buoc 1: DISM RestoreHealth
-    Write-Step "1/5" "Sua Component Store (DISM /RestoreHealth)..."
-    Write-Host "  Qua trinh nay co the mat 5-15 phut. Vui long cho..." -ForegroundColor DarkGray
     Write-Host ""
-    & DISM /Online /Cleanup-Image /RestoreHealth
-    Write-Host ""
-    Write-Step "OK" "Hoan tat DISM RestoreHealth" "OK"
-    Write-Host ""
+    Write-Step "1/4" "Dang sua kho thanh phan he thong (DISM)..."
+    Write-Host "  [!] Dang chay, vui long doi..." -ForegroundColor Yellow
+    & DISM /Online /Cleanup-Image /RestoreHealth 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Step "OK" "DISM - Sua loi thanh cong" "OK"
+    } else {
+        Write-Step "!" "DISM - Co loi. Hay thu chay lai sau khoi dong." "WARN"
+    }
 
     # Buoc 2: SFC
-    Write-Step "2/5" "Kiem tra tinh toan ven he thong (sfc /scannow)..."
-    Write-Host "  Qua trinh nay co the mat 5-10 phut. Vui long cho..." -ForegroundColor DarkGray
     Write-Host ""
-    & sfc /scannow
-    Write-Host ""
-    Write-Step "OK" "Hoan tat SFC" "OK"
-    Write-Host ""
+    Write-Step "2/4" "Dang kiem tra tinh toan ven file he thong (sfc)..."
+    Write-Host "  [!] Dang chay, vui long doi..." -ForegroundColor Yellow
+    & sfc /scannow 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Step "OK" "SFC - Kiem tra thanh cong" "OK"
+    } else {
+        Write-Step "!" "SFC - Tim thay loi. Hay khoi dong lai va chay lai." "WARN"
+    }
 
     # Buoc 3: Xoa bo nho dem Windows Update
-    Write-Step "3/5" "Xoa bo nho dem Windows Update..."
-    & net stop wuauserv 2>$null
-    & net stop bits 2>$null
-    & net stop cryptsvc 2>$null
-    & net stop msiserver 2>$null
+    Write-Host ""
+    Write-Step "3/4" "Dang xoa bo nho dem Windows Update..."
+
+    $services = @("wuauserv", "bits", "cryptsvc", "msiserver")
+    foreach ($svc in $services) {
+        Stop-Service -Name $svc -Force -ErrorAction SilentlyContinue
+    }
+    Write-Step "OK" "Da dung cac dich vu" "OK"
 
     $sdPath = "$env:SystemRoot\SoftwareDistribution"
     $crPath = "$env:SystemRoot\System32\catroot2"
+    $sdOld = "$env:SystemRoot\SoftwareDistribution.old"
+    $crOld = "$env:SystemRoot\System32\catroot2.old"
 
     if (Test-Path $sdPath) {
-        Rename-Item $sdPath "$sdPath.old" -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path $sdOld -Recurse -Force -ErrorAction SilentlyContinue
+        Rename-Item -Path $sdPath -NewName "SoftwareDistribution.old" -Force -ErrorAction SilentlyContinue
         Write-Step "OK" "Da doi ten SoftwareDistribution" "OK"
     }
     if (Test-Path $crPath) {
-        Rename-Item $crPath "$crPath.old" -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path $crOld -Recurse -Force -ErrorAction SilentlyContinue
+        Rename-Item -Path $crPath -NewName "catroot2.old" -Force -ErrorAction SilentlyContinue
         Write-Step "OK" "Da doi ten catroot2" "OK"
     }
 
-    & net start msiserver 2>$null
-    & net start cryptsvc 2>$null
-    & net start bits 2>$null
-    & net start wuauserv 2>$null
+    foreach ($svc in $services) {
+        Start-Service -Name $svc -ErrorAction SilentlyContinue
+    }
+    Write-Step "OK" "Da khoi dong lai cac dich vu" "OK"
+
+    # Buoc 4
+    Write-Host ""
+    Write-Step "4/4" "Kiem tra lai phien ban..."
+    Write-Host ""
+    & DISM /Online /Get-CurrentEdition 2>&1 | ForEach-Object {
+        if ($_ -match "Current Edition\s*:\s*(.+)") {
+            Write-Host "  Phien ban: $($Matches[1].Trim())" -ForegroundColor Cyan
+        }
+    }
     Write-Host ""
 
-    # Buoc 4: Reset Windows Update components
-    Write-Step "4/5" "Khoi phuc cac dich vu he thong..."
-    & sc.exe config wuauserv start= auto 2>$null
-    & sc.exe config bits start= auto 2>$null
-    & sc.exe config cryptsvc start= auto 2>$null
-    Write-Step "OK" "Da khoi phuc dich vu" "OK"
-    Write-Host ""
-
-    # Buoc 5: Kiem tra lai
-    Write-Step "5/5" "Kiem tra Component Store sau sua chua..."
-    Write-Host ""
-    & DISM /Online /Cleanup-Image /ScanHealth
-    Write-Host ""
-
-    Write-Host "  $([string]::new([char]0x2550, 60))" -ForegroundColor Green
+    Write-Host "  $('=' * 60)" -ForegroundColor Green
     Write-Host "  HOAN TAT SUA LOI HE THONG!" -ForegroundColor Green
-    Write-Host "  $([string]::new([char]0x2550, 60))" -ForegroundColor Green
+    Write-Host "  $('=' * 60)" -ForegroundColor Green
     Write-Host ""
-    Write-Host "  [!] Ban NEN khoi dong lai may truoc khi nang cap." -ForegroundColor Yellow
+    Write-Host "  [!] Khoi dong lai may tinh truoc khi nang cap." -ForegroundColor Yellow
     Write-Host ""
 
     $reboot = Read-Host "  Khoi dong lai bay gio? (Y/N)"
     if ($reboot -eq 'Y' -or $reboot -eq 'y') {
-        shutdown /r /t 10 /c "Khoi dong lai sau sua loi he thong"
+        shutdown /r /t 10 /c "Khoi dong lai sau khi sua loi he thong"
     }
 }
 
 function Upgrade-HomeToPro {
-    Write-Header "NANG CAP HOME -> PRO"
+    Write-Header "NANG CAP WINDOWS HOME -> PRO"
 
-    # Kiem tra phien ban hien tai
     Write-Step "SCAN" "Kiem tra phien ban hien tai..."
-    $currentEdition = DISM /Online /Get-CurrentEdition 2>&1 | Select-String "Current Edition"
-    Write-Host "  $currentEdition" -ForegroundColor White
+    $currentEdition = ""
+    & DISM /Online /Get-CurrentEdition 2>&1 | ForEach-Object {
+        if ($_ -match "Current Edition\s*:\s*(.+)") {
+            $currentEdition = $Matches[1].Trim()
+        }
+    }
+    Write-Host "  Phien ban: $currentEdition" -ForegroundColor Cyan
     Write-Host ""
 
-    # Kiem tra co phai Home khong
-    $editionStr = "$currentEdition"
-    if ($editionStr -match "Professional" -and $editionStr -notmatch "SingleLanguage") {
-        Write-Host "  [OK] May da la Windows Pro. Khong can nang cap." -ForegroundColor Green
+    if ($currentEdition -match "Professional|Enterprise|Education") {
+        Write-Host "  [!] May tinh da o phien ban cao hon Home." -ForegroundColor Yellow
+        Write-Host "  Neu muon kich hoat, chon option [9] Nhap & kich hoat key." -ForegroundColor Cyan
         return
     }
 
-    Write-Host "  Phuong thuc nang cap:" -ForegroundColor Cyan
+    $canUpgrade = $false
+    & DISM /Online /Get-TargetEditions 2>&1 | ForEach-Object {
+        if ($_ -match "Professional") { $canUpgrade = $true }
+    }
+
+    if (-not $canUpgrade) {
+        Write-Host "  [!] Phien ban hien tai khong ho tro nang cap len Pro." -ForegroundColor Red
+        return
+    }
+
+    Write-Host "  Chon phuong thuc nang cap:" -ForegroundColor White
     Write-Host ""
-    Write-Host "  [A] Nang cap bang key ban quyen Pro (go key -> cap nhat)" -ForegroundColor White
-    Write-Host "  [B] Dung generic key chuyen edition (khong kich hoat, can key sau)" -ForegroundColor White
-    Write-Host "  [C] Nang cap bang DISM + key" -ForegroundColor White
-    Write-Host "  [H] Sua loi he thong truoc khi nang cap (DISM + SFC)" -ForegroundColor Yellow
-    Write-Host "  [0] Quay lai" -ForegroundColor Red
+    Write-Host "    [1] Nang cap bang generic key (khong kich hoat)" -ForegroundColor White
+    Write-Host "       -> Dung de chuyen edition, sau do nhap key Pro de kich hoat" -ForegroundColor DarkGray
     Write-Host ""
-    $method = Read-Host "  Chon phuong thuc [A/B/C/H/0]"
+    Write-Host "    [2] Nang cap va kich hoat truc tiep bang key Pro" -ForegroundColor Green
+    Write-Host "       -> Nhap key Pro hop le, nang cap va kich hoat ngay" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "    [3] Nang cap bang DISM + key Pro" -ForegroundColor Yellow
+    Write-Host "       -> Su dung DISM khi slmgr bi loi (0xC004F069, 0x8007371B)" -ForegroundColor DarkGray
+    Write-Host ""
 
-    switch ($method.ToUpper()) {
-        "A" {
-            Write-Host ""
-            $key = Read-Host "  Nhap Product Key Windows 11 Pro"
-            if ([string]::IsNullOrWhiteSpace($key)) {
-                Write-Host "  [!] Khong co key." -ForegroundColor Yellow
-                return
-            }
-            $cleanKey = $key.Trim() -replace '\s+', ''
+    $method = Read-Host "  Chon [1-3]"
 
-            Write-Host ""
-            Write-Step "RUN" "Dang nhap key Pro va nang cap..."
-            try {
-                $process = Start-Process -FilePath "cscript.exe" -ArgumentList "//NoLogo", "$env:SystemRoot\System32\slmgr.vbs", "/ipk", $cleanKey -Wait -PassThru -WindowStyle Hidden
-                if ($process.ExitCode -eq 0) {
-                    Write-Step "OK" "Nhap key thanh cong!" "OK"
-                    Write-Host ""
-                    Write-Host "  Windows se tu dong tai va cai dat ban cap nhat Pro." -ForegroundColor Cyan
-                    Write-Host "  May se khoi dong lai. Vui long khong tat may." -ForegroundColor Yellow
-                    Write-Host ""
-                    # Goi upgrade qua Settings
-                    Start-Process "ms-settings:activation"
-                    Write-Host "  Vao Settings -> Activation -> Nhan 'Start Upgrade'" -ForegroundColor Green
-                } else {
-                    Write-Step "!" "Loi nhap key. Ma loi: $($process.ExitCode)" "ERROR"
-                    Write-Host ""
-                    Write-Host "  Neu loi 0xC004F069: May co the da bi loi Component Store." -ForegroundColor Yellow
-                    Write-Host "  Hay chon [H] de sua loi he thong truoc." -ForegroundColor Yellow
-                }
-            } catch {
-                Write-Step "!" "Loi: $_" "ERROR"
-            }
+    switch ($method) {
+        "1" { Upgrade-WithGenericKey }
+        "2" { Upgrade-WithProKey }
+        "3" { Upgrade-WithDISM }
+        default { Write-Host "  [!] Lua chon khong hop le." -ForegroundColor Red }
+    }
+}
+
+function Upgrade-WithGenericKey {
+    Write-Host ""
+    Write-Step "GENERIC" "Nang cap bang generic key Windows Pro..."
+    Write-Host ""
+    Write-Host "  Generic key: VK7JG-NPHTM-C97JM-9MPGT-3V66T" -ForegroundColor DarkGray
+    Write-Host "  [!] Key nay chi dung de CHUYEN EDITION, khong kich hoat ban quyen." -ForegroundColor Yellow
+    Write-Host ""
+
+    $confirm = Read-Host "  Tiep tuc? (Y/N)"
+    if ($confirm -ne 'Y' -and $confirm -ne 'y') { return }
+
+    Write-Host ""
+    Write-Step "1/2" "Nhap generic key de chuyen sang Pro..."
+    & cscript //NoLogo "$env:SystemRoot\System32\slmgr.vbs" /ipk VK7JG-NPHTM-C97JM-9MPGT-3V66T 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Step "OK" "Da nhap generic key thanh cong" "OK"
+    } else {
+        Write-Step "!" "Loi khi nhap generic key" "ERROR"
+        return
+    }
+
+    Write-Host ""
+    Write-Step "2/2" "Kich hoat chuyen doi..."
+    & cscript //NoLogo "$env:SystemRoot\System32\slmgr.vbs" /ato 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Step "OK" "Chuyen doi thanh cong!" "OK"
+    } else {
+        Write-Step "!" "Chuyen doi that bai. Hay thu dung DISM (option 3)." "WARN"
+    }
+
+    Write-Host ""
+    Write-Host "  $('=' * 60)" -ForegroundColor Green
+    Write-Host "  DA CHUYEN SANG WINDOWS PRO!" -ForegroundColor Green
+    Write-Host "  $('=' * 60)" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "  [!] Bay gio hay nhap key Pro CHINH HANG de kich hoat:" -ForegroundColor Yellow
+    Write-Host "  Chon option [9] Nhap & kich hoat key ban quyen moi" -ForegroundColor Cyan
+    Write-Host ""
+
+    $reboot = Read-Host "  Khoi dong lai bay gio? (Y/N)"
+    if ($reboot -eq 'Y' -or $reboot -eq 'y') {
+        shutdown /r /t 10 /c "Khoi dong lai sau khi nang cap len Windows Pro"
+    }
+}
+
+function Upgrade-WithProKey {
+    Write-Host ""
+    Write-Step "PRO" "Nang cap va kich hoat bang key Pro..."
+    Write-Host ""
+
+    $newKey = Read-Host "  Nhap Product Key Windows 11 Pro"
+    if ([string]::IsNullOrWhiteSpace($newKey)) {
+        Write-Host "  [!] Khong co key nao duoc nhap." -ForegroundColor Yellow
+        return
+    }
+
+    $cleanKey = $newKey.Trim() -replace '\s+', ''
+    Write-Host ""
+
+    Write-Step "1/3" "Nhap Product Key Pro..."
+    & cscript //NoLogo "$env:SystemRoot\System32\slmgr.vbs" /ipk $cleanKey 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Step "OK" "Nhap key thanh cong!" "OK"
+    } else {
+        Write-Step "!" "Loi nhap key. Thu dung DISM (option 3)." "ERROR"
+        return
+    }
+
+    Write-Host ""
+    Write-Step "2/3" "Kich hoat voi Microsoft..."
+    & cscript //NoLogo "$env:SystemRoot\System32\slmgr.vbs" /ato 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Step "OK" "Kich hoat thanh cong!" "OK"
+    } else {
+        Write-Step "!" "Kich hoat that bai. Hay kiem tra key va ket noi mang." "WARN"
+        Write-Host "  Neu gap loi 0xC004F069, hay chon option [3] DISM." -ForegroundColor Yellow
+    }
+
+    Write-Host ""
+    Write-Step "3/3" "Kiem tra ket qua..."
+    Write-Host ""
+    & cscript //NoLogo "$env:SystemRoot\System32\slmgr.vbs" /xpr
+
+    Write-Host ""
+    $reboot = Read-Host "  Khoi dong lai bay gio? (Y/N)"
+    if ($reboot -eq 'Y' -or $reboot -eq 'y') {
+        shutdown /r /t 10 /c "Khoi dong lai sau khi nang cap len Windows Pro"
+    }
+}
+
+function Upgrade-WithDISM {
+    Write-Host ""
+    Write-Step "DISM" "Nang cap bang DISM (khac phuc loi 0xC004F069 / 0x8007371B)..."
+    Write-Host ""
+    Write-Host "  Phuong thuc nay su dung DISM de nang cap edition." -ForegroundColor Cyan
+    Write-Host "  Khac phuc cac loi lien quan den slmgr.vbs." -ForegroundColor Cyan
+    Write-Host ""
+
+    $newKey = Read-Host "  Nhap Product Key Windows 11 Pro"
+    if ([string]::IsNullOrWhiteSpace($newKey)) {
+        Write-Host "  [!] Khong co key nao duoc nhap." -ForegroundColor Yellow
+        return
+    }
+
+    $cleanKey = $newKey.Trim() -replace '\s+', ''
+    Write-Host ""
+
+    Write-Step "1/2" "Sua loi he thong truoc khi nang cap..."
+    Write-Host "  [!] Dang chay DISM RestoreHealth, vui long doi..." -ForegroundColor Yellow
+    & DISM /Online /Cleanup-Image /RestoreHealth 2>&1 | Out-Null
+    Write-Step "OK" "Da sua loi he thong" "OK"
+
+    Write-Host ""
+    Write-Step "2/2" "Nang cap bang DISM..."
+    Write-Host "  [!] Dang nang cap, co the mat vai phut..." -ForegroundColor Yellow
+    Write-Host ""
+
+    $dismResult = & DISM /Online /Set-Edition:Professional /ProductKey:$cleanKey /AcceptEula 2>&1
+
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host ""
+        Write-Host "  $('=' * 60)" -ForegroundColor Green
+        Write-Host "  NANG CAP THANH CONG!" -ForegroundColor Green
+        Write-Host "  $('=' * 60)" -ForegroundColor Green
+    } else {
+        Write-Host ""
+        Write-Step "!" "Nang cap that bai:" "ERROR"
+        Write-Host ""
+        $dismResult | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
+        Write-Host ""
+        Write-Host "  Cach khac phuc:" -ForegroundColor Yellow
+        Write-Host "    1. Chon option [10] Sua loi he thong (DISM + SFC)" -ForegroundColor White
+        Write-Host "    2. Khoi dong lai may" -ForegroundColor White
+        Write-Host "    3. Thu lai option nay" -ForegroundColor White
+        return
+    }
+
+    $reboot = Read-Host "  Khoi dong lai bay gio? (Y/N)"
+    if ($reboot -eq 'Y' -or $reboot -eq 'y') {
+        shutdown /r /t 10 /c "Khoi dong lai sau khi nang cap len Windows Pro (DISM)"
+    }
+}
+
+function Invoke-FullUpgradeFlow {
+    Write-Header "QUY TRINH NANG CAP TOAN DIEN"
+
+    Write-Host "  Quy trinh nay se thuc hien:" -ForegroundColor Cyan
+    Write-Host "    1. Kiem tra phien ban hien tai" -ForegroundColor White
+    Write-Host "    2. Sua loi he thong (DISM + SFC)" -ForegroundColor White
+    Write-Host "    3. Go bo license cu (neu co crack)" -ForegroundColor White
+    Write-Host "    4. Nang cap Home -> Pro" -ForegroundColor White
+    Write-Host "    5. Kich hoat bang key ban quyen" -ForegroundColor White
+    Write-Host ""
+    Write-Host "  [!] Mat khoang 30-60 phut. Khong tat may." -ForegroundColor Yellow
+    Write-Host ""
+
+    $confirm = Read-Host "  Bat dau quy trinh? (Y/N)"
+    if ($confirm -ne 'Y' -and $confirm -ne 'y') { return }
+
+    # Buoc 1: Kiem tra
+    Write-Host ""
+    Write-Step "1/5" "Kiem tra phien ban hien tai..."
+    $currentEdition = ""
+    & DISM /Online /Get-CurrentEdition 2>&1 | ForEach-Object {
+        if ($_ -match "Current Edition\s*:\s*(.+)") {
+            $currentEdition = $Matches[1].Trim()
         }
-        "B" {
-            # Generic key Windows 11 Pro (chi chuyen edition, khong kich hoat)
-            $genericKey = "VK7JG-NPHTM-C97JM-9MPGT-3V66T"
-            Write-Host ""
-            Write-Step "RUN" "Dung generic key chuyen sang Pro..."
-            Write-Host "  Generic key: $genericKey" -ForegroundColor DarkGray
-            Write-Host "  (Key nay chi chuyen edition, KHONG kich hoat ban quyen)" -ForegroundColor Yellow
-            Write-Host ""
+    }
+    Write-Host "  Phien ban: $currentEdition" -ForegroundColor Cyan
 
-            try {
-                $process = Start-Process -FilePath "cscript.exe" -ArgumentList "//NoLogo", "$env:SystemRoot\System32\slmgr.vbs", "/ipk", $genericKey -Wait -PassThru -WindowStyle Hidden
-                if ($process.ExitCode -eq 0) {
-                    Write-Step "OK" "Chuyen sang Pro thanh cong!" "OK"
-                    Write-Host ""
-                    Write-Host "  Windows se khoi dong lai de hoan tat." -ForegroundColor Cyan
-                    Write-Host "  SAU KHI KHOI DONG: Nhap key ban quyen Pro chinh hang." -ForegroundColor Yellow
-                    Write-Host ""
-                    $reboot = Read-Host "  Khoi dong lai bay gio? (Y/N)"
-                    if ($reboot -eq 'Y' -or $reboot -eq 'y') {
-                        shutdown /r /t 10 /c "Nang cap Windows Home -> Pro"
-                    }
-                } else {
-                    Write-Step "!" "Loi: Khong the nhap generic key. Ma: $($process.ExitCode)" "ERROR"
-                    Write-Host ""
-                    Write-Host "  Neu loi 0x8007371B: Component Store bi loi." -ForegroundColor Yellow
-                    Write-Host "  Hay chon [H] de sua loi truoc." -ForegroundColor Yellow
-                }
-            } catch {
-                Write-Step "!" "Loi: $_" "ERROR"
-            }
-        }
-        "C" {
-            $key = Read-Host "  Nhap Product Key Windows 11 Pro"
-            if ([string]::IsNullOrWhiteSpace($key)) {
-                Write-Host "  [!] Khong co key." -ForegroundColor Yellow
-                return
-            }
-            $cleanKey = $key.Trim() -replace '\s+', ''
+    $needUpgrade = $currentEdition -notmatch "Professional|Enterprise|Education"
 
-            Write-Host ""
-            Write-Step "RUN" "Nang cap bang DISM (co the mat 15-30 phut)..."
-            Write-Host "  Vui long khong tat may trong qua trinh nang cap." -ForegroundColor Yellow
-            Write-Host ""
+    # Buoc 2: Sua loi he thong
+    Write-Host ""
+    Write-Step "2/5" "Sua loi he thong (DISM + SFC)..."
+    Write-Host "  [!] Dang chay DISM, vui long doi..." -ForegroundColor Yellow
+    & DISM /Online /Cleanup-Image /RestoreHealth 2>&1 | Out-Null
+    Write-Step "OK" "DISM hoan tat" "OK"
+    Write-Host "  [!] Dang chay SFC, vui long doi..." -ForegroundColor Yellow
+    & sfc /scannow 2>&1 | Out-Null
+    Write-Step "OK" "SFC hoan tat" "OK"
 
-            & DISM /Online /Set-Edition:Professional /ProductKey:$cleanKey /AcceptEula
+    # Buoc 3: Go bo license cu
+    Write-Host ""
+    Write-Step "3/5" "Go bo license cu..."
+    Remove-ProductKey
+    Remove-KeyFromRegistry
+    Remove-KMSInfo
+    Reset-LicenseStatus
 
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host ""
-                Write-Step "OK" "Nang cap thanh cong!" "OK"
-                Write-Host ""
-                Write-Host "  Khoi dong lai de hoan tat." -ForegroundColor Cyan
-                $reboot = Read-Host "  Khoi dong lai bay gio? (Y/N)"
-                if ($reboot -eq 'Y' -or $reboot -eq 'y') {
-                    shutdown /r /t 10 /c "Nang cap Windows Home -> Pro"
-                }
-            } else {
-                Write-Host ""
-                Write-Step "!" "Nang cap that bai. Ma loi: $LASTEXITCODE" "ERROR"
-                Write-Host ""
-                if ($LASTEXITCODE -eq 0x8007371B) {
-                    Write-Host "  -> Loi Component Store. Hay chon [H] de sua loi." -ForegroundColor Yellow
-                } elseif ($LASTEXITCODE -eq -0x3FF6FF27) {
-                    Write-Host "  -> Key khong hop le cho phien ban nay." -ForegroundColor Yellow
-                }
-            }
+    # Buoc 4: Nang cap
+    if ($needUpgrade) {
+        Write-Host ""
+        Write-Step "4/5" "Nang cap Home -> Pro bang generic key..."
+        & cscript //NoLogo "$env:SystemRoot\System32\slmgr.vbs" /ipk VK7JG-NPHTM-C97JM-9MPGT-3V66T 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Step "OK" "Da nhap generic key" "OK"
+        } else {
+            Write-Step "!" "slmgr loi. Thu DISM..." "WARN"
+            & DISM /Online /Set-Edition:Professional /ProductKey:VK7JG-NPHTM-C97JM-9MPGT-3V66T /AcceptEula 2>&1 | Out-Null
         }
-        "H" {
-            Repair-SystemForUpgrade
+    } else {
+        Write-Host ""
+        Write-Step "4/5" "May da la Pro - bo qua nang cap" "OK"
+    }
+
+    # Buoc 5: Nhap key
+    Write-Host ""
+    Write-Step "5/5" "Nhap key ban quyen de kich hoat..."
+    Write-Host ""
+    $newKey = Read-Host "  Nhap Product Key Pro (hoac Enter de bo qua)"
+
+    if (-not [string]::IsNullOrWhiteSpace($newKey)) {
+        $cleanKey = $newKey.Trim() -replace '\s+', ''
+        & cscript //NoLogo "$env:SystemRoot\System32\slmgr.vbs" /ipk $cleanKey 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Step "OK" "Nhap key thanh cong" "OK"
+            & cscript //NoLogo "$env:SystemRoot\System32\slmgr.vbs" /ato 2>&1 | Out-Null
+        } else {
+            Write-Step "!" "slmgr loi. Thu DISM..." "WARN"
+            & DISM /Online /Set-Edition:Professional /ProductKey:$cleanKey /AcceptEula 2>&1 | Out-Null
         }
-        "0" { return }
-        default {
-            Write-Host "  [!] Lua chon khong hop le." -ForegroundColor Red
-        }
+    } else {
+        Write-Host "  [!] Ban chua nhap key. Hay nhap key sau khi khoi dong lai." -ForegroundColor Yellow
+    }
+
+    Write-Host ""
+    Write-Host "  $('=' * 60)" -ForegroundColor Green
+    Write-Host "  HOAN TAT QUY TRINH NANG CAP!" -ForegroundColor Green
+    Write-Host "  $('=' * 60)" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "  [!] Khoi dong lai may de hoan tat." -ForegroundColor Yellow
+    Write-Host ""
+
+    $reboot = Read-Host "  Khoi dong lai bay gio? (Y/N)"
+    if ($reboot -eq 'Y' -or $reboot -eq 'y') {
+        shutdown /r /t 10 /c "Khoi dong lai sau quy trinh nang cap toan dien"
     }
 }
 
@@ -751,18 +942,21 @@ function Show-Menu {
         Write-Host "     [7] Sua file Hosts (xoa block Microsoft)" -ForegroundColor White
         Write-Host "     [8] Kiem tra trang thai License hien tai" -ForegroundColor White
         Write-Host "     [9] Nhap & kich hoat key ban quyen moi" -ForegroundColor Green
-        Write-Host "     --- NANG CAP WINDOWS ---" -ForegroundColor Cyan
-        Write-Host "     [A] Kiem tra phien ban hien tai" -ForegroundColor White
-        Write-Host "     [B] Nang cap Home -> Pro (3 phuong thuc)" -ForegroundColor Green
-        Write-Host "     [C] Sua loi he thong de nang cap (DISM + SFC)" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "     --- NANG CAP WINDOWS HOME -> PRO ---" -ForegroundColor Yellow
+        Write-Host "     [A] Kiem tra phien ban Windows hien tai" -ForegroundColor Cyan
+        Write-Host "     [B] Sua loi he thong (DISM + SFC)" -ForegroundColor Cyan
+        Write-Host "     [C] Nang cap Home -> Pro" -ForegroundColor Green
+        Write-Host "     [D] Quy trinh nang cap toan dien" -ForegroundColor Green
+        Write-Host ""
         Write-Host "     [0] Thoat" -ForegroundColor Red
         Write-Host ""
         Write-Host "  $('=' * 63)" -ForegroundColor Green
         Write-Host ""
 
-        $choice = Read-Host "  Chon chuc nang [0-9, A-C]"
+        $choice = Read-Host "  Chon chuc nang [0-9]"
 
-        switch ($choice.ToUpper()) {
+        switch ($choice) {
             "1" { Invoke-FullCleanup }
             "2" { Write-Header "GO PRODUCT KEY"; Remove-ProductKey }
             "3" { Write-Header "XOA KEY KHOI REGISTRY"; Remove-KeyFromRegistry }
@@ -772,9 +966,10 @@ function Show-Menu {
             "7" { Write-Header "SUA FILE HOSTS"; Repair-HostsFile }
             "8" { Show-LicenseStatus }
             "9" { Activate-NewLicense }
-            "A" { Check-EditionInfo }
-            "B" { Upgrade-HomeToPro }
-            "C" { Repair-SystemForUpgrade }
+            "a" { Check-WindowsEdition }
+            "b" { Fix-SystemErrors }
+            "c" { Upgrade-HomeToPro }
+            "d" { Invoke-FullUpgradeFlow }
             "0" { $continue = $false }
             default { Write-Host "  [!] Lua chon khong hop le." -ForegroundColor Red; Start-Sleep -Seconds 1 }
         }
