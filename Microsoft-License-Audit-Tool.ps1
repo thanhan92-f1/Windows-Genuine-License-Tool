@@ -3833,6 +3833,1091 @@ function Select-Language {
 }
 
 # ============================================================
+#  [21] MICROSOFT PRODUCT DISCOVERY
+# ============================================================
+function Invoke-ProductDiscovery {
+    Write-Header "MICROSOFT PRODUCT DISCOVERY"
+    $products = @()
+
+    function Add-Product {
+        param([string]$Name, [string]$Version, [string]$Status, [string]$Path)
+        $products += @{ Name=$Name; Version=$Version; Status=$Status; Path=$Path }
+        $sc = switch ($Status) { "Installed" { "Green" } "Running" { "Green" } default { "Yellow" } }
+        Write-Host "  [+] $Name" -Fore $sc
+        if ($Version) { Write-Host "      Version: $Version" -Fore DarkGray }
+    }
+
+    # Windows
+    $nt = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -EA SilentlyContinue
+    Add-Product "$($nt.ProductName)" "$($nt.CurrentBuild).$($nt.UBR) ($($nt.DisplayVersion))" "Installed" ""
+
+    # Windows Server
+    if ($nt.ProductName -match "Server") { Add-Product "Windows Server" "$($nt.DisplayVersion)" "Installed" "" }
+
+    # Office (Click-to-Run)
+    $c2r = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Office\ClickToRun\Configuration" -EA SilentlyContinue
+    if ($c2r) { Add-Product "Microsoft Office (C2R)" $c2r.ClientVersionToReport "Installed" $c2r.InstallationPath }
+
+    # Microsoft 365
+    if ($c2r -and $c2r.ProductReleaseIds -match "O365|M365") { Add-Product "Microsoft 365 Apps" $c2r.ClientVersionToReport "Installed" "" }
+
+    # Office MSI
+    Get-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" -EA SilentlyContinue | Where-Object {
+        $_.DisplayName -match "Microsoft Office" -and $_.DisplayName -notmatch "Click-to-Run"
+    } | ForEach-Object { Add-Product $_.DisplayName $_.DisplayVersion "Installed" $_.InstallLocation }
+
+    # Visio / Project
+    $osppPaths = @("$env:ProgramFiles\Microsoft Office\Office16\OSPP.VBS","${env:ProgramFiles(x86)}\Microsoft Office\Office16\OSPP.VBS")
+    $ospp = $osppPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if ($ospp) {
+        $out = & cscript //NoLogo $ospp /dstatus 2>&1
+        foreach ($l in $out) {
+            if ($l -match "LICENSE NAME:\s*(.+?)\s*---") {
+                $ln = $Matches[1].Trim()
+                if ($ln -match "Visio") { Add-Product "Microsoft Visio" $ln "Licensed" "" }
+                if ($ln -match "Project") { Add-Product "Microsoft Project" $ln "Licensed" "" }
+            }
+        }
+    }
+
+    # Visual Studio
+    $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+    if (Test-Path $vswhere) {
+        try {
+            $vsData = (& $vswhere -all -format json 2>&1) | ConvertFrom-Json
+            foreach ($vs in $vsData) { Add-Product $vs.displayName $vs.installationVersion "Installed" $vs.installPath }
+        } catch {}
+    }
+
+    # SQL Server
+    Get-Service *sql* -EA SilentlyContinue | ForEach-Object {
+        Add-Product $_.DisplayName "$($_.Status)" "Running" ""
+    }
+    # SQL Server Express / SSMS
+    Get-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" -EA SilentlyContinue | Where-Object {
+        $_.DisplayName -match "SQL Server|SSMS|Azure Data Studio"
+    } | ForEach-Object { Add-Product $_.DisplayName $_.DisplayVersion "Installed" "" }
+
+    # Power BI Desktop
+    $pbi = Get-AppxPackage *Microsoft.PowerBI* -EA SilentlyContinue
+    if ($pbi) { Add-Product "Power BI Desktop" $pbi.Version "Installed" "" }
+    Get-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" -EA SilentlyContinue | Where-Object {
+        $_.DisplayName -match "Power BI Desktop"
+    } | ForEach-Object { Add-Product $_.DisplayName $_.DisplayVersion "Installed" "" }
+
+    # Remote Desktop
+    $rdp = Get-Service TermService -EA SilentlyContinue
+    if ($rdp) { Add-Product "Remote Desktop Services" "$($rdp.Status)" "Running" "" }
+
+    # RSAT
+    Get-WindowsCapability -Online -Name "Rsat.*" -EA SilentlyContinue | Where-Object { $_.State -eq "Installed" } | ForEach-Object {
+        Add-Product $_.Name "" "Installed" ""
+    }
+
+    # Windows Admin Center
+    Get-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" -EA SilentlyContinue | Where-Object {
+        $_.DisplayName -match "Windows Admin Center"
+    } | ForEach-Object { Add-Product $_.DisplayName $_.DisplayVersion "Installed" "" }
+
+    # Edge
+    $edgePath = "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe"
+    if (Test-Path $edgePath) { Add-Product "Microsoft Edge" (Get-Item $edgePath).VersionInfo.ProductVersion "Installed" $edgePath }
+
+    # OneDrive
+    $odPath = "$env:LOCALAPPDATA\Microsoft\OneDrive\OneDrive.exe"
+    if (Test-Path $odPath) { Add-Product "OneDrive" (Get-Item $odPath).VersionInfo.ProductVersion "Installed" $odPath }
+
+    # Teams
+    $teamsNew = Get-AppxPackage -AllUsers *MSTeams* -EA SilentlyContinue
+    if ($teamsNew) { Add-Product "Microsoft Teams (New)" $teamsNew.Version "Installed" "" }
+    $teamsClassic = "$env:LOCALAPPDATA\Microsoft\Teams\current\Teams.exe"
+    if (Test-Path $teamsClassic) { Add-Product "Microsoft Teams (Classic)" (Get-Item $teamsClassic).VersionInfo.ProductVersion "Installed" $teamsClassic }
+
+    # Skype for Business
+    Get-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" -EA SilentlyContinue | Where-Object {
+        $_.DisplayName -match "Skype for Business|Lync"
+    } | ForEach-Object { Add-Product $_.DisplayName $_.DisplayVersion "Installed" "" }
+
+    # PowerShell
+    Add-Product "Windows PowerShell" $PSVersionTable.PSVersion.ToString() "Installed" ""
+    $pwsh = Get-Command pwsh -EA SilentlyContinue
+    if ($pwsh) { Add-Product "PowerShell 7" (& pwsh --version 2>&1) "Installed" $pwsh.Source }
+
+    # Windows Terminal
+    $wt = Get-AppxPackage *Microsoft.WindowsTerminal* -EA SilentlyContinue
+    if ($wt) { Add-Product "Windows Terminal" $wt.Version "Installed" "" }
+
+    # .NET Framework / .NET Runtime / SDK
+    $dotnetFW = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full" -EA SilentlyContinue
+    if ($dotnetFW) { Add-Product ".NET Framework" "$($dotnetFW.Version)" "Installed" "" }
+    Get-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" -EA SilentlyContinue | Where-Object {
+        $_.DisplayName -match "Microsoft .NET (Runtime|SDK|ASP\.NET)"
+    } | ForEach-Object { Add-Product $_.DisplayName $_.DisplayVersion "Installed" "" }
+
+    # VC++ Redistributable
+    Get-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" -EA SilentlyContinue | Where-Object {
+        $_.DisplayName -match "Visual C\+\+.*Redistributable"
+    } | ForEach-Object { Add-Product $_.DisplayName $_.DisplayVersion "Installed" "" }
+
+    # WebView2
+    $wv2 = Get-ItemProperty "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BEB-235B8DB0520F}" -EA SilentlyContinue
+    if ($wv2) { Add-Product "Microsoft Edge WebView2 Runtime" $wv2.pv "Installed" "" }
+
+    # Windows App SDK
+    Get-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" -EA SilentlyContinue | Where-Object {
+        $_.DisplayName -match "Windows App SDK|Windows App Runtime"
+    } | ForEach-Object { Add-Product $_.DisplayName $_.DisplayVersion "Installed" "" }
+
+    # OpenSSH
+    $sshSvc = Get-Service sshd -EA SilentlyContinue
+    if ($sshSvc) { Add-Product "OpenSSH Server" "$($sshSvc.Status)" "Running" "" }
+
+    # Hyper-V
+    $hv = Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All -EA SilentlyContinue
+    if ($hv -and $hv.State -eq "Enabled") { Add-Product "Hyper-V" "" "Enabled" "" }
+
+    # WSL
+    $wsl = Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -EA SilentlyContinue
+    if ($wsl -and $wsl.State -eq "Enabled") { Add-Product "WSL" "" "Enabled" "" }
+
+    # IIS
+    $iis = Get-Service W3SVC -EA SilentlyContinue
+    if ($iis) { Add-Product "IIS (Web Server)" "$($iis.Status)" "Running" "" }
+
+    # Defender
+    try {
+        $def = Get-MpComputerStatus -EA SilentlyContinue
+        Add-Product "Windows Defender" "$($def.AntivirusSignatureVersion)" $(if($def.AntivirusEnabled){"Enabled"}else{"Disabled"}) ""
+        if ($def.AMServiceEnabled) { Add-Product "Defender for Endpoint" "" "Enabled" "" }
+    } catch {}
+
+    # MSXML
+    Get-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" -EA SilentlyContinue | Where-Object {
+        $_.DisplayName -match "MSXML"
+    } | ForEach-Object { Add-Product $_.DisplayName $_.DisplayVersion "Installed" "" }
+
+    # DirectX
+    $dxVer = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\DirectX" -EA SilentlyContinue).Version
+    if ($dxVer) { Add-Product "DirectX" $dxVer "Installed" "" }
+
+    Write-Host ""
+    Write-Host "  Tong san pham phat hien: $($products.Count)" -Fore Green
+    $Script:AuditReport.ProductDiscovery = $products
+    Write-Host ""
+}
+
+# ============================================================
+#  [22] MICROSOFT RUNTIME AUDIT
+# ============================================================
+function Invoke-RuntimeAudit {
+    Write-Header "MICROSOFT RUNTIME AUDIT"
+    $runtimes = @()
+
+    function Check-Runtime {
+        param([string]$Name, [string]$Version, [bool]$Found)
+        $icon = if ($Found) { "[OK]" } else { "[--]" }
+        $color = if ($Found) { "Green" } else { "DarkGray" }
+        Write-Host "  $icon $Name" -Fore $color
+        if ($Version) { Write-Host "      $Version" -Fore DarkGray }
+        $runtimes += @{ Name=$Name; Version=$Version; Found=$Found }
+    }
+
+    # .NET Framework
+    $fw4 = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full" -EA SilentlyContinue
+    Check-Runtime ".NET Framework 4.x" "$($fw4.Version)" ($null -ne $fw4)
+    $fw35 = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v3.5" -EA SilentlyContinue
+    Check-Runtime ".NET Framework 3.5" "$($fw35.Version)" ($null -ne $fw35)
+
+    # .NET Runtime
+    $dotnetExe = Get-Command dotnet -EA SilentlyContinue
+    if ($dotnetExe) {
+        $dotnetVer = & dotnet --list-runtimes 2>&1
+        foreach ($r in $dotnetVer) {
+            if ($r -match "^([\w\.]+)\s+([\d\.]+)") { Check-Runtime "$($Matches[1])" $Matches[2] $true }
+        }
+    } else { Check-Runtime ".NET Runtime" "" $false }
+
+    # .NET SDK
+    if ($dotnetExe) {
+        $sdkVer = & dotnet --list-sdks 2>&1
+        foreach ($s in $sdkVer) {
+            if ($s -match "^([\d\.]+)") { Check-Runtime ".NET SDK" $Matches[1] $true }
+        }
+    } else { Check-Runtime ".NET SDK" "" $false }
+
+    # ASP.NET
+    Get-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" -EA SilentlyContinue | Where-Object {
+        $_.DisplayName -match "ASP\.NET"
+    } | ForEach-Object { Check-Runtime "ASP.NET Runtime" $_.DisplayVersion $true }
+
+    # Visual C++
+    Get-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" -EA SilentlyContinue | Where-Object {
+        $_.DisplayName -match "Visual C\+\+.*Redistributable"
+    } | ForEach-Object { Check-Runtime $_.DisplayName $_.DisplayVersion $true }
+
+    # MSXML
+    Get-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" -EA SilentlyContinue | Where-Object {
+        $_.DisplayName -match "MSXML"
+    } | ForEach-Object { Check-Runtime $_.DisplayName $_.DisplayVersion $true }
+
+    # DirectX
+    $dxVer = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\DirectX" -EA SilentlyContinue).Version
+    Check-Runtime "DirectX" $dxVer ($null -ne $dxVer)
+
+    # Windows SDK
+    Get-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" -EA SilentlyContinue | Where-Object {
+        $_.DisplayName -match "Windows SDK"
+    } | ForEach-Object { Check-Runtime $_.DisplayName $_.DisplayVersion $true }
+
+    # Windows ADK
+    Get-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" -EA SilentlyContinue | Where-Object {
+        $_.DisplayName -match "Windows ADK|Assessment and Deployment"
+    } | ForEach-Object { Check-Runtime $_.DisplayName $_.DisplayVersion $true }
+
+    # Windows App SDK
+    Get-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" -EA SilentlyContinue | Where-Object {
+        $_.DisplayName -match "Windows App SDK|Windows App Runtime"
+    } | ForEach-Object { Check-Runtime $_.DisplayName $_.DisplayVersion $true }
+
+    # PowerShell
+    Check-Runtime "Windows PowerShell" $PSVersionTable.PSVersion.ToString() $true
+    $pwsh = Get-Command pwsh -EA SilentlyContinue
+    if ($pwsh) { Check-Runtime "PowerShell 7" (& pwsh --version 2>&1) $true } else { Check-Runtime "PowerShell 7" "" $false }
+
+    # WinGet
+    $winget = Get-Command winget -EA SilentlyContinue
+    if ($winget) { Check-Runtime "WinGet" (& winget --version 2>&1) $true } else { Check-Runtime "WinGet" "" $false }
+
+    $Script:AuditReport.RuntimeAudit = $runtimes
+    Write-Host ""
+    Write-Host "  Tong runtimes: $($runtimes.Count)" -Fore Green
+    Write-Host ""
+}
+
+# ============================================================
+#  [23] MICROSOFT SERVICES AUDIT
+# ============================================================
+function Invoke-ServicesAudit {
+    Write-Header "MICROSOFT SERVICES AUDIT"
+    $svcList = @()
+    $checkServices = @(
+        @{ Name="sppsvc"; Display="Software Protection" },
+        @{ Name="ClickToRunSvc"; Display="Office ClickToRun" },
+        @{ Name="wuauserv"; Display="Windows Update" },
+        @{ Name="BITS"; Display="BITS" },
+        @{ Name="WinDefend"; Display="Windows Defender" },
+        @{ Name="W32Time"; Display="Time Service" },
+        @{ Name="CryptSvc"; Display="Cryptographic Service" },
+        @{ Name="TrustedInstaller"; Display="TrustedInstaller" },
+        @{ Name="msiserver"; Display="Windows Installer" },
+        @{ Name="LicenseManager"; Display="License Manager" },
+        @{ Name="DoSvc"; Display="Delivery Optimization" },
+        @{ Name="ClipSVC"; Display="ClipSVC" },
+        @{ Name="InstallService"; Display="Store Install Service" },
+        @{ Name="OneSyncSvc"; Display="OneSync" },
+        @{ Name="WpnService"; Display="Push Notifications" }
+    )
+
+    foreach ($cs in $checkServices) {
+        $svc = Get-Service $cs.Name -EA SilentlyContinue
+        if ($svc) {
+            $sc = switch ($svc.Status) { "Running" { "Green" } "Stopped" { "Yellow" } default { "Yellow" } }
+            Write-Host "  [OK] $($cs.Display)" -Fore $sc
+            Write-Host "       Status: $($svc.Status) | StartType: $($svc.StartType)" -Fore DarkGray
+            $svcList += @{ Name=$cs.Display; ServiceName=$svc.Name; Status=$svc.Status; StartType=$svc.StartType }
+        } else {
+            Write-Host "  [--] $($cs.Display)" -Fore DarkGray
+            $svcList += @{ Name=$cs.Display; ServiceName=$cs.Name; Status="Not Found"; StartType="N/A" }
+        }
+    }
+
+    $Script:AuditReport.ServicesAudit = $svcList
+    Write-Host ""
+    Write-Host "  Tong dich vu: $($svcList.Count) | Running: $(($svcList|?{$_.Status -eq 'Running'}).Count)" -Fore Green
+    Write-Host ""
+}
+
+# ============================================================
+#  [24] MICROSOFT STORE AUDIT
+# ============================================================
+function Invoke-StoreAudit {
+    Write-Header "MICROSOFT STORE AUDIT"
+
+    # Store App
+    $store = Get-AppxPackage *Microsoft.WindowsStore* -EA SilentlyContinue
+    if ($store) {
+        Write-Host "  [OK] Microsoft Store: $($store.Version)" -Fore Green
+    } else {
+        Write-Host "  [--] Microsoft Store: Khong tim thay" -Fore Yellow
+    }
+
+    # Store Cache
+    $storeCache = "$env:LOCALCache\Packages\Microsoft.WindowsStore_*"
+    if (Test-Path $storeCache) { Write-Host "  [OK] Store Cache: Ton tai" -Fore Green } else { Write-Host "  [--] Store Cache: Khong co" -Fore DarkGray }
+
+    # App Installer / WinGet
+    $appInstaller = Get-AppxPackage *Microsoft.DesktopAppInstaller* -EA SilentlyContinue
+    if ($appInstaller) { Write-Host "  [OK] Desktop App Installer: $($appInstaller.Version)" -Fore Green } else { Write-Host "  [--] Desktop App Installer" -Fore DarkGray }
+
+    $winget = Get-Command winget -EA SilentlyContinue
+    if ($winget) { Write-Host "  [OK] WinGet: $(& winget --version 2>&1)" -Fore Green } else { Write-Host "  [--] WinGet: Khong co" -Fore DarkGray }
+
+    # Store License
+    $storeLicense = Get-AppxPackage *WindowsStore* | Get-AppxPackageManifest -EA SilentlyContinue
+    if ($storeLicense) { Write-Host "  [OK] Store License: Hop le" -Fore Green }
+
+    # Store Account
+    try {
+        $accounts = Get-AppxPackage -PackageTypeFilter Bundle *Microsoft.AccountsControl* -EA SilentlyContinue
+        if ($accounts) { Write-Host "  [OK] Store Account: Co" -Fore Green } else { Write-Host "  [--] Store Account: Khong ro" -Fore DarkGray }
+    } catch {}
+
+    Write-Host ""
+}
+
+# ============================================================
+#  [25] MICROSOFT ACCOUNT AUDIT
+# ============================================================
+function Invoke-AccountAudit {
+    Write-Header "MICROSOFT ACCOUNT AUDIT"
+
+    $cs = Get-CimInstance Win32_ComputerSystem -EA SilentlyContinue
+    Write-Host "  Domain:           $($cs.Domain)" -Fore White
+    Write-Host "  Part of Domain:   $($cs.PartOfDomain)" -Fore $(if($cs.PartOfDomain){"Green"}else{"Yellow"})
+
+    # Current user
+    $user = whoami 2>&1
+    Write-Host "  Current User:     $user" -Fore White
+
+    # Microsoft Account check
+    $msAccount = Get-ItemProperty "HKCU:\SOFTWARE\Microsoft\IdentityCRL\UserExtendedProperties" -EA SilentlyContinue
+    if ($msAccount) {
+        Write-Host "  Microsoft Account: Dang nhap" -Fore Green
+    } else {
+        Write-Host "  Microsoft Account: Chua dang nhap (Local)" -Fore Yellow
+    }
+
+    # Azure AD / Entra ID
+    $aadReg = Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\CloudDomainJoin\JoinInfo" -EA SilentlyContinue
+    if ($aadReg) {
+        Write-Host "  Azure AD / Entra ID: Joined" -Fore Green
+    } else {
+        Write-Host "  Azure AD / Entra ID: Khong" -Fore DarkGray
+    }
+
+    # Local accounts
+    $localUsers = Get-LocalUser -EA SilentlyContinue
+    Write-Host "  Local Accounts:   $($localUsers.Count)" -Fore White
+    foreach ($u in $localUsers) {
+        $sc = if ($u.Enabled) { "Green" } else { "DarkGray" }
+        Write-Host "    $($u.Name) [$(if($u.Enabled){'Enabled'}else{'Disabled'})]" -Fore $sc
+    }
+
+    Write-Host ""
+}
+
+# ============================================================
+#  [26] MICROSOFT UPDATE AUDIT
+# ============================================================
+function Invoke-UpdateAudit {
+    Write-Header "MICROSOFT UPDATE AUDIT"
+
+    # Windows Update service
+    $wu = Get-Service wuauserv -EA SilentlyContinue
+    Write-Host "  Windows Update:  $($wu.Status)" -Fore $(if($wu.Status -eq "Running"){"Green"}else{"Red"})
+
+    # Last update install
+    try {
+        $hotfix = Get-HotFix -EA SilentlyContinue | Sort-Object InstalledOn -Descending | Select-Object -First 5
+        Write-Host ""
+        Write-Host "  ── 5 Updates gan nhat ──────────────────────────────────" -Fore Cyan
+        foreach ($hf in $hotfix) {
+            Write-Host "    $($hf.HotFixID) | $($hf.InstalledOn.ToString('yyyy-MM-dd')) | $($hf.Description)" -Fore White
+        }
+    } catch {}
+
+    # Pending updates
+    try {
+        $wuSession = New-Object -ComObject Microsoft.Update.Session
+        $searcher = $wuSession.CreateUpdateSearcher()
+        $pending = $searcher.Search("IsInstalled=0")
+        Write-Host ""
+        Write-Host "  Pending Updates:     $($pending.Updates.Count)" -Fore $(if($pending.Updates.Count -gt 0){"Yellow"}else{"Green"})
+        if ($pending.Updates.Count -gt 0) {
+            foreach ($upd in $pending.Updates | Select-Object -First 10) {
+                Write-Host "    $($upd.Title)" -Fore DarkGray
+            }
+        }
+    } catch { Write-Host "  Pending Updates: Khong the truy cap" -Fore DarkGray }
+
+    # Restart pending
+    $restartPending = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired" -EA SilentlyContinue
+    if ($restartPending) {
+        Write-Host ""
+        Write-Host "  [!!] YEU CAU KHOI DONG LAI" -Fore Red
+    }
+
+    # Failed updates
+    try {
+        $failedEvents = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Microsoft-Windows-WindowsUpdateClient'; Id=20; StartTime=(Get-Date).AddDays(-30)} -MaxEvents 5 -EA SilentlyContinue
+        if ($failedEvents) {
+            Write-Host ""
+            Write-Host "  Failed Updates (30 ngay): $($failedEvents.Count)" -Fore Red
+        }
+    } catch {}
+
+    Write-Host ""
+}
+
+# ============================================================
+#  [27] MICROSOFT SECURITY AUDIT
+# ============================================================
+function Invoke-SecurityAuditFull {
+    Write-Header "MICROSOFT SECURITY AUDIT"
+    $secItems = @()
+
+    function Check-SecurityItem {
+        param([string]$Name, [bool]$Passed, [string]$Detail)
+        $icon = if ($Passed) { "[OK]" } else { "[!!]" }
+        $color = if ($Passed) { "Green" } else { "Red" }
+        Write-Host "  $icon $Name - $Detail" -Fore $color
+        $secItems += @{ Item=$Name; Status=$(if($Passed){"PASS"}else{"FAIL"}); Detail=$Detail }
+    }
+
+    # Defender
+    try { $def = Get-MpComputerStatus -EA SilentlyContinue; Check-SecurityItem "Windows Defender" $def.AntivirusEnabled "AV=$($def.AntivirusEnabled)" } catch { Check-SecurityItem "Windows Defender" $false "N/A" }
+    try { $def2 = Get-MpComputerStatus -EA SilentlyContinue; Check-SecurityItem "Real-time Protection" $def2.RealTimeProtectionEnabled "RTP=$($def2.RealTimeProtectionEnabled)" } catch {}
+    try { $mp = Get-MpPreference -EA SilentlyContinue; Check-SecurityItem "Tamper Protection" (Get-MpComputerStatus).TamperProtection "Status=$((Get-MpComputerStatus).TamperProtection)" } catch {}
+
+    # SmartScreen
+    $ss = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" -Name SmartScreenEnabled -EA SilentlyContinue
+    Check-SecurityItem "SmartScreen" ($ss.SmartScreenEnabled -ne "Off") "$($ss.SmartScreenEnabled)"
+
+    # Firewall
+    try { $fw = Get-NetFirewallProfile -EA SilentlyContinue; Check-SecurityItem "Firewall" (($fw|?{$_.Enabled}).Count -eq $fw.Count) "$(($fw|?{$_.Enabled}).Count)/$($fw.Count)" } catch { Check-SecurityItem "Firewall" $false "N/A" }
+
+    # BitLocker
+    try { $bl = Get-BitLockerVolume -MountPoint $env:SystemDrive -EA SilentlyContinue; Check-SecurityItem "BitLocker" ($bl.ProtectionStatus -eq "On") "$($bl.ProtectionStatus)" } catch { Check-SecurityItem "BitLocker" $false "N/A" }
+
+    # Credential Guard
+    try { $dg = Get-CimInstance -ClassName Win32_DeviceGuard -Namespace root\Microsoft\Windows\DeviceGuard -EA SilentlyContinue; Check-SecurityItem "Credential Guard" ($dg.SecurityServicesRunning -contains 1) "Running=$($dg.SecurityServicesRunning)" } catch { Check-SecurityItem "Credential Guard" $false "N/A" }
+
+    # Device Guard
+    try { $dg2 = Get-CimInstance -ClassName Win32_DeviceGuard -Namespace root\Microsoft\Windows\DeviceGuard -EA SilentlyContinue; Check-SecurityItem "Device Guard" ($dg2.VirtualizationBasedSecurityStatus -eq 2) "VBS=$($dg2.VirtualizationBasedSecurityStatus)" } catch { Check-SecurityItem "Device Guard" $false "N/A" }
+
+    # VBS
+    try { $vbs = Get-CimInstance -ClassName Win32_DeviceGuard -Namespace root\Microsoft\Windows\DeviceGuard -EA SilentlyContinue; Check-SecurityItem "Virtualization Based Security" ($vbs.VirtualizationBasedSecurityStatus -eq 2) "Status=$($vbs.VirtualizationBasedSecurityStatus)" } catch { Check-SecurityItem "VBS" $false "N/A" }
+
+    # Core Isolation / Memory Integrity
+    $ciReg = Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" -EA SilentlyContinue
+    $ciEnabled = $ciReg.Enabled -eq 1
+    Check-SecurityItem "Core Isolation / Memory Integrity" $ciEnabled "Enabled=$($ciReg.Enabled)"
+
+    # Secure Boot
+    try { $sb = Confirm-SecureBootUEFI -EA SilentlyContinue; Check-SecurityItem "Secure Boot" ($sb -eq $true) $(if($sb){"Enabled"}else{"Disabled"}) } catch { Check-SecurityItem "Secure Boot" $false "N/A" }
+
+    # TPM
+    try { $tpm = Get-Tpm -EA SilentlyContinue; Check-SecurityItem "TPM" ($tpm.TpmPresent -and $tpm.TpmReady) "Present=$($tpm.TpmPresent) Ready=$($tpm.TpmReady)" } catch { Check-SecurityItem "TPM" $false "N/A" }
+
+    # Exploit Protection
+    $epReg = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options" -EA SilentlyContinue
+    Check-SecurityItem "Exploit Protection" ($null -ne $epReg) "Configured"
+
+    # Controlled Folder Access
+    try { $cfa = (Get-MpPreference).EnableControlledFolderAccess; Check-SecurityItem "Controlled Folder Access" ($cfa -eq 1) "Status=$cfa" } catch { Check-SecurityItem "Controlled Folder Access" $false "N/A" }
+
+    # Windows Hello
+    $whReg = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI\UserTileOptions" -EA SilentlyContinue
+    Check-SecurityItem "Windows Hello" ($null -ne $whReg) "Available"
+
+    # Summary
+    Write-Host ""
+    $passCount = ($secItems | Where-Object { $_.Status -eq "PASS" }).Count
+    $failCount = ($secItems | Where-Object { $_.Status -eq "FAIL" }).Count
+    Write-Host "  PASS: $passCount | FAIL: $failCount | Total: $($secItems.Count)" -Fore $(if($failCount -eq 0){"Green"}else{"Red"})
+    $Script:AuditReport.SecurityAuditFull = $secItems
+    Write-Host ""
+}
+
+# ============================================================
+#  [28] MICROSOFT OPTIONAL FEATURES
+# ============================================================
+function Invoke-OptionalFeatures {
+    Write-Header "MICROSOFT OPTIONAL FEATURES"
+    $features = @(
+        "Microsoft-Hyper-V-All", "Containers-DisposableClientVM",
+        "Microsoft-Windows-Subsystem-Linux", "VirtualMachinePlatform",
+        "IIS-WebServer", "SMB1Protocol", "TelnetClient", "TFTP",
+        "OpenSSH.Server~~~~0.0.1.0", "XPS.Viewer~~~~6.3.0.0",
+        "WindowsMediaPlayer", "NetFX3", "Microsoft-Windows-NetFx3-OC-Package",
+        "Microsoft.PowerShell.ISE~~~~0.0.1.0"
+    )
+
+    $enabledCount = 0
+    foreach ($f in $features) {
+        $feat = Get-WindowsOptionalFeature -Online -FeatureName $f -EA SilentlyContinue
+        if ($feat) {
+            $sc = if ($feat.State -eq "Enabled") { "Green" } else { "DarkGray" }
+            $icon = if ($feat.State -eq "Enabled") { "[ON]" } else { "[--]" }
+            Write-Host "  $icon $($feat.FeatureName): $($feat.State)" -Fore $sc
+            if ($feat.State -eq "Enabled") { $enabledCount++ }
+        }
+    }
+
+    # Additional capabilities
+    Write-Host ""
+    Write-Host "  ── Installed Capabilities ────────────────────────────" -Fore Cyan
+    $caps = Get-WindowsCapability -Online -EA SilentlyContinue | Where-Object { $_.State -eq "Installed" }
+    foreach ($c in $caps | Select-Object -First 20) {
+        Write-Host "    [OK] $($c.Name)" -Fore Green
+    }
+    if ($caps.Count -gt 20) { Write-Host "    ... va $($caps.Count - 20) capabilities khac" -Fore DarkGray }
+
+    Write-Host ""
+    Write-Host "  Features Enabled: $enabledCount | Capabilities: $($caps.Count)" -Fore Green
+    Write-Host ""
+}
+
+# ============================================================
+#  [29] MICROSOFT DRIVERS AUDIT
+# ============================================================
+function Invoke-DriversAudit {
+    Write-Header "MICROSOFT DRIVERS AUDIT"
+
+    Write-Host "  ── Microsoft Drivers ───────────────────────────────────" -Fore Cyan
+    $msDrivers = Get-WindowsDriver -Online -EA SilentlyContinue | Where-Object { $_.ProviderName -match "Microsoft" } | Select-Object -First 20
+    foreach ($d in $msDrivers) {
+        Write-Host "    $($d.Driver) | $($d.Version) | $($d.Date.ToString('yyyy-MM-dd'))" -Fore White
+    }
+
+    # Check for problematic drivers
+    Write-Host ""
+    Write-Host "  ── Problematic Drivers ─────────────────────────────────" -Fore Cyan
+    try {
+        $problemDevices = Get-PnpDevice | Where-Object { $_.Status -ne "OK" }
+        if ($problemDevices) {
+            foreach ($pd in $problemDevices | Select-Object -First 10) {
+                Write-Host "    [!!] $($pd.FriendlyName): $($pd.Status)" -Fore Red
+            }
+        } else {
+            Write-Host "    [OK] Khong co driver van de" -Fore Green
+        }
+    } catch { Write-Host "    Khong the kiem tra" -Fore DarkGray }
+
+    # Key Microsoft drivers
+    Write-Host ""
+    Write-Host "  ── Key Drivers ────────────────────────────────────────" -Fore Cyan
+    $keyDrivers = @("BasicDisplay", "Microsoft Print To PDF", "Hyper-V", "Virtual Disk", "Storage Spaces")
+    foreach ($kd in $keyDrivers) {
+        $drv = Get-WindowsDriver -Online -EA SilentlyContinue | Where-Object { $_.Driver -match $kd } | Select-Object -First 1
+        if ($drv) { Write-Host "    [OK] $kd`: $($drv.Version)" -Fore Green } else { Write-Host "    [--] $kd" -Fore DarkGray }
+    }
+    Write-Host ""
+}
+
+# ============================================================
+#  [30] MICROSOFT LICENSING COMPONENTS AUDIT
+# ============================================================
+function Invoke-LicensingComponents {
+    Write-Header "MICROSOFT LICENSING COMPONENTS"
+
+    # SPP
+    $sppSvc = Get-Service sppsvc -EA SilentlyContinue
+    Write-Host "  Software Protection Platform:  $($sppSvc.Status)" -Fore $(if($sppSvc.Status -eq "Running"){"Green"}else{"Yellow"})
+
+    # Office SPP
+    $osppSvc = Get-Service osppsvc -EA SilentlyContinue
+    if ($osppSvc) { Write-Host "  Office Software Protection:    $($osppSvc.Status)" -Fore White }
+
+    # ClipSVC
+    $clipSvc = Get-Service ClipSVC -EA SilentlyContinue
+    if ($clipSvc) { Write-Host "  ClipSVC:                       $($clipSvc.Status)" -Fore White }
+
+    # Token Store
+    $tokenPath = "$env:SystemRoot\ServiceProfiles\LocalService\AppData\Local\Microsoft\WSLicense"
+    if (Test-Path $tokenPath) { Write-Host "  Token Store:                   Ton tai" -Fore Green } else { Write-Host "  Token Store:                   Khong co" -Fore DarkGray }
+
+    # License info
+    Write-Host ""
+    Write-Host "  ── License Details ────────────────────────────────────" -Fore Cyan
+    $dli = & cscript //NoLogo $Script:Slmgr /dli 2>&1
+    foreach ($l in $dli) { if ($l.Trim()) { Write-Host "    $l" -Fore White } }
+
+    # KMS Configuration
+    Write-Host ""
+    Write-Host "  ── KMS Configuration ──────────────────────────────────" -Fore Cyan
+    $dlv = & cscript //NoLogo $Script:Slmgr /dlv 2>&1
+    $hasKMS = $false
+    foreach ($l in $dlv) {
+        if ($l -match "KMS Machine Name") { Write-Host "    $l" -Fore Yellow; $hasKMS = $true }
+        if ($l -match "Product Key Channel") { Write-Host "    $l" -Fore White }
+        if ($l -match "License Status") { Write-Host "    $l" -Fore $(if($l-match "Licensed"){"Green"}else{"Red"}) }
+    }
+    if (-not $hasKMS) { Write-Host "    Khong co KMS configuration" -Fore Green }
+
+    Write-Host ""
+}
+
+# ============================================================
+#  [31] MICROSOFT CERTIFICATES AUDIT
+# ============================================================
+function Invoke-CertificatesAudit {
+    Write-Header "MICROSOFT CERTIFICATES AUDIT"
+
+    $certStores = @(
+        @{ Store="Root"; Name="Trusted Root CA" },
+        @{ Store="TrustedPublisher"; Name="Trusted Publisher" },
+        @{ Store="My"; Name="Personal" }
+    )
+
+    foreach ($cs in $certStores) {
+        Write-Host "  ── $($cs.Name) ──────────────────────────────────────" -Fore Cyan
+        try {
+            $certs = Get-ChildItem "Cert:\LocalMachine\$($cs.Store)" -EA SilentlyContinue
+            $msCerts = $certs | Where-Object { $_.Issuer -match "Microsoft|Windows" }
+            Write-Host "  Total: $($certs.Count) | Microsoft: $($msCerts.Count)" -Fore White
+            foreach ($c in $msCerts | Select-Object -First 5) {
+                $expired = if ($c.NotAfter -lt (Get-Date)) { " [EXPIRED]" } else { "" }
+                Write-Host "    $($c.Subject.Substring(0, [Math]::Min(60, $c.Subject.Length)))" -Fore $(if($expired){"Red"}else{"Green"})
+                Write-Host "      Expires: $($c.NotAfter.ToString('yyyy-MM-dd'))$expired" -Fore DarkGray
+            }
+        } catch { Write-Host "  Khong the truy cap" -Fore DarkGray }
+        Write-Host ""
+    }
+}
+
+# ============================================================
+#  [32] MICROSOFT SCHEDULED TASKS AUDIT
+# ============================================================
+function Invoke-TasksAudit {
+    Write-Header "MICROSOFT SCHEDULED TASKS AUDIT"
+
+    $categories = @(
+        @{ Pattern="Windows.*Update"; Name="Windows Update" },
+        @{ Pattern="Defender|MpIdleScan|MpScheduled"; Name="Defender" },
+        @{ Pattern="Office|ClickToRun|OfficeSvc"; Name="Office" },
+        @{ Pattern="OneDrive"; Name="OneDrive" },
+        @{ Pattern="WindowsStore|Store"; Name="Store" },
+        @{ Pattern="MicrosoftEdge"; Name="Edge" },
+        @{ Pattern="Feedback|Telemetry|CEIP|UsbCeip"; Name="Telemetry" },
+        @{ Pattern="Windows.*Backup"; Name="Backup" },
+        @{ Pattern="Disk.*Cleanup|CleanupManager"; Name="Disk Cleanup" }
+    )
+
+    $allTasks = Get-ScheduledTask -EA SilentlyContinue
+    $totalMS = 0
+
+    foreach ($cat in $categories) {
+        $matched = $allTasks | Where-Object { $_.TaskName -match $cat.Pattern -or $_.TaskPath -match $cat.Pattern }
+        if ($matched) {
+            Write-Host "  ── $($cat.Name) ($($matched.Count)) ──────────────────────" -Fore Cyan
+            foreach ($t in $matched | Select-Object -First 5) {
+                $sc = switch ($t.State) { "Running" { "Green" } "Ready" { "White" } "Disabled" { "DarkGray" } default { "Yellow" } }
+                Write-Host "    $($t.TaskName): $($t.State)" -Fore $sc
+            }
+            $totalMS += $matched.Count
+        }
+    }
+
+    Write-Host ""
+    Write-Host "  Tong Microsoft tasks: $totalMS / $($allTasks.Count) total" -Fore Green
+    Write-Host ""
+}
+
+# ============================================================
+#  [33] MICROSOFT REGISTRY AUDIT
+# ============================================================
+function Invoke-RegistryAudit {
+    Write-Header "MICROSOFT REGISTRY AUDIT"
+
+    $regPaths = @(
+        @{ Path="HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform"; Name="Windows Licensing" },
+        @{ Path="HKLM:\SOFTWARE\Microsoft\OfficeSoftwareProtectionPlatform"; Name="Office Licensing" },
+        @{ Path="HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"; Name="Windows Update Policy" },
+        @{ Path="HKLM:\SOFTWARE\Microsoft\Windows Defender"; Name="Defender" },
+        @{ Path="HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsStore"; Name="Store" },
+        @{ Path="HKLM:\SOFTWARE\Microsoft\OneDrive"; Name="OneDrive" },
+        @{ Path="HKLM:\SOFTWARE\Policies\Microsoft\Edge"; Name="Edge Policy" },
+        @{ Path="HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies"; Name="Windows Policies" }
+    )
+
+    foreach ($rp in $regPaths) {
+        if (Test-Path $rp.Path) {
+            $props = Get-ItemProperty $rp.Path -EA SilentlyContinue
+            $propCount = ($props.PSObject.Properties | Where-Object { $_.Name -notmatch "^PS" }).Count
+            Write-Host "  [OK] $($rp.Name): $propCount properties" -Fore Green
+        } else {
+            Write-Host "  [--] $($rp.Name): Khong ton tai" -Fore DarkGray
+        }
+    }
+    Write-Host ""
+}
+
+# ============================================================
+#  [34] MICROSOFT ENVIRONMENT AUDIT
+# ============================================================
+function Invoke-EnvironmentAudit {
+    Write-Header "MICROSOFT ENVIRONMENT AUDIT"
+
+    $nt = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -EA SilentlyContinue
+    $cs = Get-CimInstance Win32_OperatingSystem -EA SilentlyContinue
+    $tz = Get-TimeZone
+
+    Write-Host "  Edition:       $($nt.ProductName)" -Fore White
+    Write-Host "  Build:         $($nt.CurrentBuild).$($nt.UBR)" -Fore White
+    Write-Host "  Release:       $($nt.DisplayVersion)" -Fore White
+    Write-Host "  Architecture:  $($cs.OSArchitecture)" -Fore White
+    Write-Host "  Language:      $((Get-Culture).DisplayName)" -Fore White
+    Write-Host "  Time Zone:     $($tz.DisplayName)" -Fore White
+    Write-Host "  Locale:        $((Get-WinSystemLocale).Name)" -Fore White
+
+    # Activation Channel
+    $dli = & cscript //NoLogo $Script:Slmgr /dli 2>&1
+    foreach ($l in $dli) {
+        if ($l -match "Product Key Channel:\s*(.+)") { Write-Host "  Channel:       $($Matches[1].Trim())" -Fore Cyan }
+    }
+
+    Write-Host ""
+}
+
+# ============================================================
+#  [35] MICROSOFT REPAIR CENTER
+# ============================================================
+function Invoke-RepairCenter {
+    Write-Header "MICROSOFT REPAIR CENTER"
+    Write-Host "  Chon doi tuong sua chua:" -Fore Cyan
+    Write-Host "    [1] Windows Update" -Fore White
+    Write-Host "    [2] Microsoft Store" -Fore White
+    Write-Host "    [3] Office" -Fore White
+    Write-Host "    [4] OneDrive" -Fore White
+    Write-Host "    [5] Edge" -Fore White
+    Write-Host "    [6] Defender" -Fore White
+    Write-Host "    [7] Windows Installer" -Fore White
+    Write-Host "    [8] Licensing Service" -Fore White
+    Write-Host "    [9] THUC HIEN TAT CA" -Fore Green
+    Write-Host "    [0] Bo qua" -Fore Red
+    Write-Host ""
+    $ch = Read-Host "  Chon"
+    if ($ch -eq "0") { return }
+
+    $acts = if ($ch -eq "9") { 1..8 } else { $ch -split "[,\s]+" | ForEach-Object { [int]$_ } }
+
+    foreach ($act in $acts) {
+        switch ($act) {
+            1 {
+                Write-Step "INFO" "Repair Windows Update..."
+                Stop-Service wuauserv,bits,cryptsvc,msiserver -Force -EA SilentlyContinue
+                Remove-Item "$env:SystemRoot\SoftwareDistribution" -Recurse -Force -EA SilentlyContinue
+                Start-Service wuauserv,bits,cryptsvc,msiserver -EA SilentlyContinue
+                & DISM /Online /Cleanup-Image /RestoreHealth 2>&1 | Out-Null
+                Write-Step "OK" "Windows Update repaired" "OK"
+            }
+            2 {
+                Write-Step "INFO" "Repair Microsoft Store..."
+                Get-AppxPackage *WindowsStore* | Reset-AppxPackage -EA SilentlyContinue
+                & wsreset.exe 2>&1 | Out-Null
+                Write-Step "OK" "Store repaired" "OK"
+            }
+            3 {
+                Write-Step "INFO" "Repair Office..."
+                $c2rPath = "$env:ProgramFiles\Common Files\Microsoft Shared\ClickToRun\OfficeC2RClient.exe"
+                if (Test-Path $c2rPath) { Start-Process $c2rPath -Arg "/repair user" -Wait -EA SilentlyContinue }
+                Write-Step "OK" "Office repair initiated" "OK"
+            }
+            4 {
+                Write-Step "INFO" "Repair OneDrive..."
+                $odPath = "$env:LOCALAPPDATA\Microsoft\OneDrive\OneDrive.exe"
+                if (Test-Path $odPath) { & $odPath /reset 2>&1 | Out-Null }
+                Write-Step "OK" "OneDrive reset" "OK"
+            }
+            5 {
+                Write-Step "INFO" "Repair Edge..."
+                $edgePath = "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe"
+                if (Test-Path $edgePath) { & $edgePath --restore-last-session 2>&1 | Out-Null }
+                Write-Step "OK" "Edge initiated" "OK"
+            }
+            6 {
+                Write-Step "INFO" "Repair Defender..."
+                & "$env:ProgramFiles\Windows Defender\MpCmdRun.exe" -RemoveDefinitions -All 2>&1 | Out-Null
+                Update-MpSignature -EA SilentlyContinue
+                Write-Step "OK" "Defender repaired" "OK"
+            }
+            7 {
+                Write-Step "INFO" "Repair Windows Installer..."
+                Stop-Service msiserver -Force -EA SilentlyContinue
+                Start-Service msiserver -EA SilentlyContinue
+                Write-Step "OK" "Windows Installer restarted" "OK"
+            }
+            8 {
+                Write-Step "INFO" "Repair Licensing Service..."
+                Stop-Service sppsvc -Force -EA SilentlyContinue
+                Start-Sleep 2
+                Start-Service sppsvc -EA SilentlyContinue
+                Run-Slmgr "/rearm" "Reset licensing"
+                Write-Step "OK" "Licensing service repaired" "OK"
+            }
+        }
+    }
+    Write-Host ""
+    Write-Host "  SUA CHUA HOAN TAT!" -Fore Green
+    Write-Host ""
+}
+
+# ============================================================
+#  [36] MICROSOFT DOWNLOAD CENTER
+# ============================================================
+function Invoke-DownloadCenter {
+    Write-Header "MICROSOFT DOWNLOAD CENTER"
+    $downloads = @(
+        @{ Name="Media Creation Tool (Win11)"; URL="https://www.microsoft.com/software-download/windows11" },
+        @{ Name="Media Creation Tool (Win10)"; URL="https://www.microsoft.com/software-download/windows10" },
+        @{ Name="Windows ISO"; URL="https://www.microsoft.com/en-us/software-download/windows11ISO" },
+        @{ Name="Office Deployment Tool"; URL="https://www.microsoft.com/en-us/download/details.aspx?id=49117" },
+        @{ Name="Visual Studio Installer"; URL="https://visualstudio.microsoft.com/downloads/" },
+        @{ Name=".NET SDK"; URL="https://dotnet.microsoft.com/download" },
+        @{ Name="PowerShell 7"; URL="https://github.com/PowerShell/PowerShell/releases" },
+        @{ Name="WinGet"; URL="https://github.com/microsoft/winget-cli/releases" },
+        @{ Name="Windows Terminal"; URL="https://aka.ms/terminal" }
+    )
+
+    $n = 0
+    foreach ($dl in $downloads) {
+        $n++
+        Write-Host "    [$n] $($dl.Name)" -Fore White
+        Write-Host "        $($dl.URL)" -Fore DarkGray
+    }
+    Write-Host "    [0] Bo qua" -Fore Red
+    Write-Host ""
+    $ch = Read-Host "  Chon de mo trang (so)"
+    if ($ch -ne "0" -and $ch -ne "") {
+        $idx = [int]$ch - 1
+        if ($idx -ge 0 -and $idx -lt $downloads.Count) {
+            Start-Process $downloads[$idx].URL
+            Write-Step "OK" "Da mo: $($downloads[$idx].Name)" "OK"
+        }
+    }
+    Write-Host ""
+}
+
+# ============================================================
+#  [37] MICROSOFT HEALTH CHECK (EXTENDED)
+# ============================================================
+function Invoke-HealthCheckFull {
+    Write-Header "MICROSOFT HEALTH CHECK (EXTENDED)"
+    $health = @()
+
+    function Check-HealthItem {
+        param([string]$Name, [string]$Status, [string]$Detail)
+        $sc = switch ($Status) { "OK" { "Green" } "WARN" { "Yellow" } "FAIL" { "Red" } default { "DarkGray" } }
+        $icon = switch ($Status) { "OK" { "[OK]" } "WARN" { "[!]" } "FAIL" { "[!!]" } default { "[--]" } }
+        Write-Host "  $icon $Name - $Detail" -Fore $sc
+        $health += @{ Item=$Name; Status=$Status; Detail=$Detail }
+    }
+
+    # Windows Health
+    Check-HealthItem "Windows" "OK" "$($Script:AuditReport.SystemInfo.ProductName) $($Script:AuditReport.SystemInfo.CurrentBuild)"
+    # Office Health
+    $c2r = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Office\ClickToRun\Configuration" -EA SilentlyContinue
+    if ($c2r) { Check-HealthItem "Office" "OK" "$($c2r.ProductReleaseIds) v$($c2r.ClientVersionToReport)" }
+    # Activation Health
+    $dli = & cscript //NoLogo $Script:Slmgr /dli 2>&1
+    $ls = ""; foreach ($l in $dli) { if ($l -match "License Status:\s*(.+)") { $ls = $Matches[1].Trim() } }
+    Check-HealthItem "Activation" $(if($ls-match "Licensed"){"OK"}else{"FAIL"}) $ls
+    # Update Health
+    $wu = Get-Service wuauserv -EA SilentlyContinue
+    Check-HealthItem "Windows Update" $(if($wu.Status -eq "Running"){"OK"}else{"WARN"}) $wu.Status
+    # Security Health
+    try { $def = Get-MpComputerStatus -EA SilentlyContinue; Check-HealthItem "Defender" $(if($def.AntivirusEnabled){"OK"}else{"FAIL"}) "AV=$($def.AntivirusEnabled)" } catch {}
+    # Storage Health
+    $disk = Get-PhysicalDisk -EA SilentlyContinue | Select-Object -First 1
+    if ($disk) { Check-HealthItem "Storage" $(if($disk.HealthStatus -eq "Healthy"){"OK"}else{"FAIL"}) "$($disk.HealthStatus)" }
+    # System Health
+    $ram = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 1)
+    Check-HealthItem "System" "OK" "RAM: ${ram}GB"
+
+    # Summary
+    Write-Host ""
+    $okCount = ($health | Where-Object { $_.Status -eq "OK" }).Count
+    $warnCount = ($health | Where-Object { $_.Status -eq "WARN" }).Count
+    $failCount = ($health | Where-Object { $_.Status -eq "FAIL" }).Count
+    Write-Host "  OK: $okCount | WARN: $warnCount | FAIL: $failCount" -Fore $(if($failCount -eq 0){"Green"}else{"Red"})
+    $Script:AuditReport.HealthCheckFull = $health
+    Write-Host ""
+}
+
+# ============================================================
+#  [38] MICROSOUBLESHOOTER
+# ============================================================
+function Invoke-Troubleshooter {
+    Write-Header "MICROSOFT TROUBLESHOOTER"
+    Write-Host "  Chon doi tuong kiem tra:" -Fore Cyan
+    Write-Host "    [1] Activation" -Fore White
+    Write-Host "    [2] Windows Update" -Fore White
+    Write-Host "    [3] Microsoft Store" -Fore White
+    Write-Host "    [4] Office" -Fore White
+    Write-Host "    [5] Network" -Fore White
+    Write-Host "    [6] Printing" -Fore White
+    Write-Host "    [7] Audio" -Fore White
+    Write-Host "    [0] Bo qua" -Fore Red
+    Write-Host ""
+    $ch = Read-Host "  Chon"
+    if ($ch -eq "0") { return }
+
+    $troubleshooters = @{
+        "1" = @{ Name="Activation"; Cmd="msdt.exe /id ActivationDiagnostic" }
+        "2" = @{ Name="Windows Update"; Cmd="msdt.exe /id WindowsUpdateDiagnostic" }
+        "3" = @{ Name="Store"; Cmd="wsreset.exe" }
+        "4" = @{ Name="Office"; Cmd="msdt.exe /id OfficeDiagnostic" }
+        "5" = @{ Name="Network"; Cmd="msdt.exe /id NetworkDiagnosticsWeb" }
+        "6" = @{ Name="Printing"; Cmd="msdt.exe /id PrinterDiagnostic" }
+        "7" = @{ Name="Audio"; Cmd="msdt.exe /id AudioPlaybackDiagnostic" }
+    }
+
+    if ($troubleshooters.ContainsKey($ch)) {
+        $ts = $troubleshooters[$ch]
+        Write-Step "INFO" "Mo $($ts.Name) troubleshooter..."
+        Start-Process cmd.exe -Arg "/c $($ts.Cmd)" -EA SilentlyContinue
+        Write-Step "OK" "Troubleshooter da mo" "OK"
+    }
+    Write-Host ""
+}
+
+# ============================================================
+#  [39] MICROSOFT LOG COLLECTOR
+# ============================================================
+function Invoke-LogCollector {
+    Write-Header "MICROSOFT LOG COLLECTOR"
+
+    $logDir = Join-Path $env:TEMP "MS_Logs_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+    New-Item -ItemType Directory $logDir -Force | Out-Null
+
+    Write-Step "INFO" "Thu thap logs..."
+
+    # Event Viewer
+    Write-Step "INFO" "Event Viewer..."
+    wevtutil epl System "$logDir\System.evtx" /ow:true 2>&1 | Out-Null
+    wevtutil epl Application "$logDir\Application.evtx" /ow:true 2>&1 | Out-Null
+    Write-Step "OK" "Event logs exported" "OK"
+
+    # CBS.log
+    if (Test-Path "$env:SystemRoot\Logs\CBS\CBS.log") {
+        Copy-Item "$env:SystemRoot\Logs\CBS\CBS.log" "$logDir\CBS.log" -Force
+        Write-Step "OK" "CBS.log copied" "OK"
+    }
+
+    # DISM.log
+    if (Test-Path "$env:SystemRoot\Logs\DISM\dism.log") {
+        Copy-Item "$env:SystemRoot\Logs\DISM\dism.log" "$logDir\DISM.log" -Force
+        Write-Step "OK" "DISM.log copied" "OK"
+    }
+
+    # WindowsUpdate.log
+    try { Get-WindowsUpdateLog -LogPath "$logDir\WindowsUpdate.log" -EA SilentlyContinue } catch {}
+    Write-Step "OK" "WindowsUpdate.log generated" "OK"
+
+    # Defender
+    & "$env:ProgramFiles\Windows Defender\MpCmdRun.exe" -GetFiles 2>&1 | Out-Null
+    $defLog = "$env:ProgramData\Microsoft\Windows Defender\Support"
+    if (Test-Path $defLog) { Copy-Item "$defLog\*" "$logDir\" -Force -EA SilentlyContinue }
+    Write-Step "OK" "Defender logs copied" "OK"
+
+    # System info
+    systeminfo > "$logDir\systeminfo.txt" 2>&1
+
+    Write-Host ""
+    Write-Host "  Logs tai: $logDir" -Fore Cyan
+    Write-Host ""
+    $Script:AuditReport.LogDir = $logDir
+}
+
+# ============================================================
+#  [40] MICROSOFT REPORT GENERATOR
+# ============================================================
+function Invoke-ReportGenerator {
+    Write-Header "MICROSOFT REPORT GENERATOR"
+    Write-Host "  Chon bao cao:" -Fore Cyan
+    Write-Host "    [1] Inventory Report" -Fore White
+    Write-Host "    [2] License Report" -Fore White
+    Write-Host "    [3] Office Report" -Fore White
+    Write-Host "    [4] Activation Report" -Fore White
+    Write-Host "    [5] Windows 11 Report" -Fore White
+    Write-Host "    [6] Health Report" -Fore White
+    Write-Host "    [7] Security Report" -Fore White
+    Write-Host "    [8] Repair Report" -Fore White
+    Write-Host "    [9] TOAN BO BAO CAO" -Fore Green
+    Write-Host "    [0] Bo qua" -Fore Red
+    Write-Host ""
+    $ch = Read-Host "  Chon"
+    if ($ch -eq "0") { return }
+
+    # Collect all data if not already
+    Get-SystemInventory | Out-Null
+    Get-LicenseAudit | Out-Null
+    Test-Windows11Compatibility | Out-Null
+    Detect-InvalidActivation | Out-Null
+    Test-SystemHealth | Out-Null
+
+    # Generate reports
+    Export-AuditReport
+    Write-Host ""
+}
+
+# ============================================================
+#  [41] MICROSOFT QUICK ACTIONS
+# ============================================================
+function Invoke-QuickActions {
+    Write-Header "MICROSOFT QUICK ACTIONS (1-TOUCH)"
+    Write-Host "  Thuc hien nhanh cac thao tac pho bien:" -Fore Cyan
+    Write-Host ""
+    Write-Host "    [1] Scan Windows + Office + Security" -Fore Green
+    Write-Host "    [2] Check Windows 11 + License + Updates" -Fore Green
+    Write-Host "    [3] Repair All (Windows + Office + Store + Update)" -Fore Green
+    Write-Host "    [4] Verify + Export Report" -Fore Green
+    Write-Host "    [5] FULL: Scan + Repair + Verify + Report" -Fore Green
+    Write-Host "    [0] Bo qua" -Fore Red
+    Write-Host ""
+    $ch = Read-Host "  Chon"
+
+    switch ($ch) {
+        "1" {
+            Write-Host ""
+            Get-SystemInventory | Out-Null
+            Get-LicenseAudit | Out-Null
+            Invoke-SecurityAuditFull
+        }
+        "2" {
+            Write-Host ""
+            Get-SystemInventory | Out-Null
+            Test-Windows11Compatibility
+            Get-LicenseAudit | Out-Null
+            Invoke-UpdateAudit
+        }
+        "3" {
+            Write-Host ""
+            Invoke-RepairCenter
+        }
+        "4" {
+            Write-Host ""
+            Verify-Activation
+            Export-AuditReport
+        }
+        "5" {
+            Write-Host ""
+            Get-SystemInventory | Out-Null
+            Get-LicenseAudit | Out-Null
+            Test-Windows11Compatibility | Out-Null
+            Invoke-SecurityAuditFull | Out-Null
+            Invoke-UpdateAudit | Out-Null
+            Invoke-RepairCenter | Out-Null
+            Verify-Activation | Out-Null
+            Test-SystemHealth | Out-Null
+            Export-AuditReport
+        }
+    }
+    Write-Host ""
+}
+
+# ============================================================
 #  CHUC NANG THEO TUNG SAN PHAM
 # ============================================================
 
@@ -4780,6 +5865,29 @@ function Show-Menu {
         Write-Host "   [P9] " -NoNewline; Write-Host "Sao luu he thong (Backup)" -Fore Green
         Write-Host "   [PA] " -NoNewline; Write-Host "Khoi phuc he thong (Restore)" -Fore Green
         Write-Host ""
+        Write-Host "   --- AUDIT MOI (21-41) ---" -Fore Yellow
+        Write-Host "   [M1] " -NoNewline; Write-Host "Product Discovery (phat hien tat ca)" -Fore Green
+        Write-Host "   [M2] " -NoNewline; Write-Host "Runtime Audit (.NET, VC++, DirectX...)" -Fore Green
+        Write-Host "   [M3] " -NoNewline; Write-Host "Services Audit (SPP, WU, Defender...)" -Fore Green
+        Write-Host "   [M4] " -NoNewline; Write-Host "Store Audit (MS Store, WinGet)" -Fore Green
+        Write-Host "   [M5] " -NoNewline; Write-Host "Account Audit (MS/Azure AD/Domain)" -Fore Green
+        Write-Host "   [M6] " -NoNewline; Write-Host "Update Audit (Windows/Office/Driver)" -Fore Green
+        Write-Host "   [M7] " -NoNewline; Write-Host "Security Audit Full (17 checks)" -Fore Green
+        Write-Host "   [M8] " -NoNewline; Write-Host "Optional Features (Hyper-V, WSL, IIS...)" -Fore Green
+        Write-Host "   [M9] " -NoNewline; Write-Host "Drivers Audit" -Fore Green
+        Write-Host "   [MA] " -NoNewline; Write-Host "Licensing Components Audit" -Fore Green
+        Write-Host "   [MB] " -NoNewline; Write-Host "Certificates Audit" -Fore Green
+        Write-Host "   [MC] " -NoNewline; Write-Host "Scheduled Tasks Audit" -Fore Green
+        Write-Host "   [MD] " -NoNewline; Write-Host "Registry Audit" -Fore Green
+        Write-Host "   [ME] " -NoNewline; Write-Host "Environment Audit" -Fore Green
+        Write-Host "   [MF] " -NoNewline; Write-Host "Repair Center (8 doi tuong)" -Fore Green
+        Write-Host "   [MG] " -NoNewline; Write-Host "Download Center" -Fore Green
+        Write-Host "   [MH] " -NoNewline; Write-Host "Health Check Full" -Fore Green
+        Write-Host "   [MI] " -NoNewline; Write-Host "Troubleshooter" -Fore Green
+        Write-Host "   [MJ] " -NoNewline; Write-Host "Log Collector" -Fore Green
+        Write-Host "   [MK] " -NoNewline; Write-Host "Report Generator" -Fore Green
+        Write-Host "   [ML] " -NoNewline; Write-Host "Quick Actions (1-touch)" -Fore Green
+        Write-Host ""
         Write-Host "   [L]  Ngon ngu / Language" -Fore Cyan
         Write-Host "   [0]  Thoat / Exit" -Fore Red
         Write-Host ""
@@ -4860,6 +5968,49 @@ function Show-Menu {
             "p9" { Invoke-SystemBackup }
             "PA" { Invoke-SystemRestore }
             "pa" { Invoke-SystemRestore }
+            # Audit moi (21-41)
+            "M1" { Invoke-ProductDiscovery }
+            "m1" { Invoke-ProductDiscovery }
+            "M2" { Invoke-RuntimeAudit }
+            "m2" { Invoke-RuntimeAudit }
+            "M3" { Invoke-ServicesAudit }
+            "m3" { Invoke-ServicesAudit }
+            "M4" { Invoke-StoreAudit }
+            "m4" { Invoke-StoreAudit }
+            "M5" { Invoke-AccountAudit }
+            "m5" { Invoke-AccountAudit }
+            "M6" { Invoke-UpdateAudit }
+            "m6" { Invoke-UpdateAudit }
+            "M7" { Invoke-SecurityAuditFull }
+            "m7" { Invoke-SecurityAuditFull }
+            "M8" { Invoke-OptionalFeatures }
+            "m8" { Invoke-OptionalFeatures }
+            "M9" { Invoke-DriversAudit }
+            "m9" { Invoke-DriversAudit }
+            "MA" { Invoke-LicensingComponents }
+            "ma" { Invoke-LicensingComponents }
+            "MB" { Invoke-CertificatesAudit }
+            "mb" { Invoke-CertificatesAudit }
+            "MC" { Invoke-TasksAudit }
+            "mc" { Invoke-TasksAudit }
+            "MD" { Invoke-RegistryAudit }
+            "md" { Invoke-RegistryAudit }
+            "ME" { Invoke-EnvironmentAudit }
+            "me" { Invoke-EnvironmentAudit }
+            "MF" { Invoke-RepairCenter }
+            "mf" { Invoke-RepairCenter }
+            "MG" { Invoke-DownloadCenter }
+            "mg" { Invoke-DownloadCenter }
+            "MH" { Invoke-HealthCheckFull }
+            "mh" { Invoke-HealthCheckFull }
+            "MI" { Invoke-Troubleshooter }
+            "mi" { Invoke-Troubleshooter }
+            "MJ" { Invoke-LogCollector }
+            "mj" { Invoke-LogCollector }
+            "MK" { Invoke-ReportGenerator }
+            "mk" { Invoke-ReportGenerator }
+            "ML" { Invoke-QuickActions }
+            "ml" { Invoke-QuickActions }
             # Ngon ngu
             "L"  { Select-Language }
             "l"  { Select-Language }
